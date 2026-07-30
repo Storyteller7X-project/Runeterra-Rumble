@@ -360,6 +360,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 
     <div class="spinRow">
       <button class="btnGold" id="spinBtn">Spin</button>
+      <div class="soundHint" id="soundKitLabel"></div>
     </div>
 
     <div class="decks" id="decks"></div>
@@ -460,7 +461,7 @@ $('logoutBtn').addEventListener('click', () => {
 });
 
 /* ================= AUDIO ================= */
-let audioCtx = null, master = null, noiseBuf = null;
+let audioCtx = null, master = null, noiseBuf = null, riserNodes = [];
 function ac(){
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -477,111 +478,234 @@ function ac(){
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
-function noise(ctx){ const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s; }
-
-/* mechanical tick: filtered noise click + low knock */
-function tickSound(speed){
-  if (!soundOn) return;
-  const ctx = ac(), t = ctx.currentTime;
-  const s = noise(ctx);
-  const f = ctx.createBiquadFilter();
-  f.type = 'bandpass'; f.frequency.value = 1500 + speed * 900; f.Q.value = 7;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.5, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-  s.connect(f).connect(g).connect(master);
-  s.start(t); s.stop(t + 0.06);
-  const o = ctx.createOscillator(), g2 = ctx.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(240, t);
-  o.frequency.exponentialRampToValueAtTime(85, t + 0.07);
-  g2.gain.setValueAtTime(0.22, t);
-  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-  o.connect(g2).connect(master);
-  o.start(t); o.stop(t + 0.09);
-}
-
-/* tension riser while the reel slows down */
-let riser = null;
-function startRiser(dur){
-  if (!soundOn) return;
-  const ctx = ac(), t = ctx.currentTime, sec = dur / 1000;
-  const s = noise(ctx); s.loop = true;
-  const f = ctx.createBiquadFilter();
-  f.type = 'bandpass'; f.Q.value = 1.4;
-  f.frequency.setValueAtTime(180, t);
-  f.frequency.exponentialRampToValueAtTime(2600, t + sec);
-  const g = ctx.createGain();
+function noise(){ const s = audioCtx.createBufferSource(); s.buffer = noiseBuf; return s; }
+/* helpers */
+function tone(type, f0, f1, t, dur, peak, attack = 0.002, dest = master){
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.16, t + sec * 0.85);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.15);
-  s.connect(f).connect(g).connect(master);
-  s.start(t); s.stop(t + sec + 0.3);
-  riser = s;
+  g.gain.exponentialRampToValueAtTime(peak, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(dest);
+  o.start(t); o.stop(t + dur + 0.05);
+  return o;
 }
-function stopRiser(){ try { if (riser) riser.stop(); } catch(e){} riser = null; }
-
-/* landing: sub drop, impact, crash and a slow metallic chord */
-function landSound(){
-  if (!soundOn) return;
-  const ctx = ac(), t = ctx.currentTime;
-
-  /* sub drop */
-  const sub = ctx.createOscillator(), sg = ctx.createGain();
-  sub.type = 'sine';
-  sub.frequency.setValueAtTime(170, t);
-  sub.frequency.exponentialRampToValueAtTime(34, t + 0.6);
-  sg.gain.setValueAtTime(0.9, t);
-  sg.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
-  sub.connect(sg).connect(master);
-  sub.start(t); sub.stop(t + 0.8);
-
-  /* impact thud */
-  const imp = noise(ctx);
-  const lf = ctx.createBiquadFilter();
-  lf.type = 'lowpass'; lf.frequency.setValueAtTime(500, t);
-  lf.frequency.exponentialRampToValueAtTime(90, t + 0.3);
-  const ig = ctx.createGain();
-  ig.gain.setValueAtTime(0.7, t);
-  ig.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-  imp.connect(lf).connect(ig).connect(master);
-  imp.start(t); imp.stop(t + 0.4);
-
-  /* bright crash */
-  const cr = noise(ctx);
-  const hf = ctx.createBiquadFilter();
-  hf.type = 'highpass'; hf.frequency.value = 3800;
-  const cg = ctx.createGain();
-  cg.gain.setValueAtTime(0.16, t + 0.02);
-  cg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
-  cr.connect(hf).connect(cg).connect(master);
-  cr.start(t + 0.02); cr.stop(t + 1.4);
-
-  /* metallic power chord with echo */
-  const delay = ctx.createDelay(1); delay.delayTime.value = 0.27;
-  const fb = ctx.createGain(); fb.gain.value = 0.34;
-  const wet = ctx.createGain(); wet.gain.value = 0.5;
-  delay.connect(fb).connect(delay);
-  delay.connect(wet).connect(master);
-  const chordIn = ctx.createGain(); chordIn.connect(master); chordIn.connect(delay);
-  [73.42, 110.0, 146.83, 220.0].forEach((freq, i) => {
-    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-    o.type = 'sawtooth';
-    o.frequency.value = freq;
-    o.detune.value = (i % 2 ? 6 : -6);
-    f.type = 'lowpass';
-    f.frequency.setValueAtTime(2200, t);
-    f.frequency.exponentialRampToValueAtTime(320, t + 2);
-    g.gain.setValueAtTime(0.0001, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.075, t + 0.09);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
-    o.connect(f).connect(g).connect(chordIn);
-    o.start(t + 0.03); o.stop(t + 2.3);
-  });
+function noiseHit(filterType, f0, f1, t, dur, peak, Q = 1, dest = master){
+  const s = noise();
+  const f = audioCtx.createBiquadFilter();
+  f.type = filterType; f.Q.value = Q;
+  f.frequency.setValueAtTime(f0, t);
+  if (f1 && f1 !== f0) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(peak, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f).connect(g).connect(dest);
+  s.start(t); s.stop(t + dur + 0.05);
+  return s;
 }
+function distortion(amount){
+  const ws = audioCtx.createWaveShaper();
+  const n = 512, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.tanh(amount * x); }
+  ws.curve = curve;
+  return ws;
+}
+
+/* Six sound kits, one per spin. Tell me which number sounds best. */
+const SOUND_KITS = [
+
+/* 1: Orchestral hit - timpani, brass stab, cymbal */
+{ label: "Sound 1: Orchestral hit",
+  tick(sp){ const t = audioCtx.currentTime;
+    tone('sine', 900, 650, t, 0.05, 0.28);
+    noiseHit('bandpass', 2200, null, t, 0.03, 0.25, 8);
+  },
+  riser(sec){ const t = audioCtx.currentTime;
+    const s = noise(); s.loop = true;
+    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + sec * 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+    lfo.frequency.setValueAtTime(7, t);
+    lfo.frequency.linearRampToValueAtTime(22, t + sec);
+    lg.gain.value = 0.06;
+    lfo.connect(lg).connect(g.gain);
+    s.connect(f).connect(g).connect(master);
+    s.start(t); s.stop(t + sec + 0.2); lfo.start(t); lfo.stop(t + sec + 0.2);
+    riserNodes = [s, lfo];
+  },
+  land(){ const t = audioCtx.currentTime;
+    tone('sine', 115, 52, t, 0.9, 0.85);
+    [98, 146.83, 196].forEach(f => {
+      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 850; bp.Q.value = 1;
+      bp.connect(master);
+      tone('sawtooth', f, null, t + 0.01, 0.55, 0.16, 0.015, bp);
+    });
+    noiseHit('highpass', 5200, null, t + 0.02, 1.1, 0.13);
+  }
+},
+
+/* 2: Hextech chimes - glassy bells */
+{ label: "Sound 2: Hextech chimes",
+  tick(sp){ const t = audioCtx.currentTime;
+    tone('sine', 2400 + sp * 400, null, t, 0.04, 0.12);
+    tone('sine', 3600, null, t, 0.025, 0.05);
+  },
+  riser(sec){ const t = audioCtx.currentTime;
+    const s = noise(); s.loop = true;
+    const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 10;
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(6000, t + sec);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + sec * 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+    s.connect(f).connect(g).connect(master);
+    s.start(t); s.stop(t + sec + 0.2);
+    riserNodes = [s];
+  },
+  land(){ const t = audioCtx.currentTime;
+    tone('sine', 65, null, t, 0.6, 0.35);
+    [523.25, 659.25, 783.99].forEach((f, i) => {
+      const d = i * 0.09;
+      tone('sine', f, null, t + d, 1.7, 0.22, 0.004);
+      tone('sine', f * 2.76, null, t + d, 0.9, 0.06, 0.004);
+    });
+    tone('sine', 1567.98, null, t + 0.27, 2.2, 0.1, 0.004);
+  }
+},
+
+/* 3: War braam - distorted low brass and huge drum */
+{ label: "Sound 3: War braam",
+  tick(sp){ const t = audioCtx.currentTime;
+    tone('sine', 165, 55, t, 0.09, 0.32);
+  },
+  riser(sec){ const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(50, t);
+    o.frequency.linearRampToValueAtTime(74, t + sec);
+    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 220;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.11, t + sec * 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+    o.connect(f).connect(g).connect(master);
+    o.start(t); o.stop(t + sec + 0.2);
+    riserNodes = [o];
+  },
+  land(){ const t = audioCtx.currentTime;
+    tone('sine', 95, 36, t, 0.55, 1.0);
+    noiseHit('lowpass', 240, 70, t, 0.45, 0.5);
+    const dist = distortion(3.5);
+    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(750, t);
+    lp.frequency.exponentialRampToValueAtTime(140, t + 2.4);
+    const bus = audioCtx.createGain(); bus.gain.value = 0.4;
+    dist.connect(lp).connect(bus).connect(master);
+    [49, 98, 147].forEach(f => tone('sawtooth', f, null, t + 0.05, 2.4, 0.3, 0.14, dist));
+  }
+},
+
+/* 4: Jackpot - fanfare arpeggio and coin shimmer */
+{ label: "Sound 4: Jackpot",
+  tick(sp){ const t = audioCtx.currentTime;
+    noiseHit('highpass', 3200, null, t, 0.02, 0.32);
+  },
+  riser(sec){ riserNodes = []; },
+  land(){ const t = audioCtx.currentTime;
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+      tone('triangle', f, null, t + i * 0.085, 0.24, 0.2, 0.003);
+    });
+    [523.25, 659.25, 783.99, 1046.5].forEach(f => {
+      tone('triangle', f, null, t + 0.46, 0.9, 0.11, 0.01);
+    });
+    for (let i = 0; i < 12; i++) {
+      const d = 0.1 + Math.random() * 0.8;
+      tone('sine', 2000 + Math.random() * 4000, null, t + d, 0.09, 0.05);
+    }
+    tone('sine', 98, null, t, 0.4, 0.3);
+  }
+},
+
+/* 5: Sci-fi charge - laser zap and pulse cannon */
+{ label: "Sound 5: Sci-fi charge",
+  tick(sp){ const t = audioCtx.currentTime;
+    tone('triangle', 1100, 1800, t, 0.035, 0.14);
+  },
+  riser(sec){ const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(70, t);
+    o.frequency.exponentialRampToValueAtTime(950, t + sec);
+    const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
+    f.frequency.setValueAtTime(200, t);
+    f.frequency.exponentialRampToValueAtTime(2600, t + sec);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.1, t + sec * 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+    o.connect(f).connect(g).connect(master);
+    o.start(t); o.stop(t + sec + 0.2);
+    riserNodes = [o];
+  },
+  land(){ const t = audioCtx.currentTime;
+    const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 8;
+    bp.frequency.setValueAtTime(2400, t);
+    bp.frequency.exponentialRampToValueAtTime(140, t + 0.35);
+    bp.connect(master);
+    tone('sawtooth', 2100, 85, t, 0.35, 0.5, 0.002, bp);
+    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130;
+    lp.connect(master);
+    tone('square', 55, null, t + 0.03, 0.5, 0.65, 0.005, lp);
+    const hum = audioCtx.createOscillator(), hg = audioCtx.createGain();
+    hum.type = 'sine'; hum.frequency.value = 110;
+    const vib = audioCtx.createOscillator(), vg = audioCtx.createGain();
+    vib.frequency.value = 6; vg.gain.value = 6;
+    vib.connect(vg).connect(hum.frequency);
+    hg.gain.setValueAtTime(0.0001, t + 0.1);
+    hg.gain.exponentialRampToValueAtTime(0.09, t + 0.2);
+    hg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    hum.connect(hg).connect(master);
+    hum.start(t + 0.1); hum.stop(t + 1.4); vib.start(t + 0.1); vib.stop(t + 1.4);
+  }
+},
+
+/* 6: Detonation - heartbeat ticks into a huge explosion */
+{ label: "Sound 6: Detonation",
+  tick(sp){ const t = audioCtx.currentTime;
+    tone('sine', 72, 48, t, 0.09, 0.5);
+  },
+  riser(sec){ const t = audioCtx.currentTime;
+    const s = noise(); s.loop = true;
+    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 130;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + sec * 0.95);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+    s.connect(f).connect(g).connect(master);
+    s.start(t); s.stop(t + sec + 0.2);
+    riserNodes = [s];
+  },
+  land(){ const t = audioCtx.currentTime;
+    noiseHit('lowpass', 850, 55, t, 2.2, 0.9);
+    tone('sine', 46, null, t, 1.5, 0.7, 0.01);
+    noiseHit('bandpass', 1800, 400, t + 0.02, 0.25, 0.2, 2);
+  }
+}
+];
+
+function kit(){ return SOUND_KITS[Math.min(spinIndex, 5)]; }
+function playTick(sp){ if (!soundOn) return; ac(); kit().tick(sp); }
+function playLand(){ if (!soundOn) return; ac(); kit().land(); }
+function startRiser(dur){ if (!soundOn) return; ac(); kit().riser(dur / 1000); }
+function stopRiser(){ riserNodes.forEach(n => { try { n.stop(); } catch(e){} }); riserNodes = []; }
+
 $('soundBtn').addEventListener('click', () => {
   soundOn = !soundOn;
-  $('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+  $('soundBtn').textContent = soundOn ? '\ud83d\udd0a' : '\ud83d\udd07';
 });
 
 /* ================= UI ================= */
@@ -662,10 +786,12 @@ function renderStage(){
     $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
     $('spinBtn').textContent = 'Spin';
     $('spinBtn').disabled = spinning;
+    $('soundKitLabel').textContent = SOUND_KITS[spinIndex].label;
   } else {
     $('stageCount').textContent = 'Done';
     $('stageTarget').textContent = 'All decks are locked in';
     $('spinBtn').disabled = true;
+    $('soundKitLabel').textContent = '';
   }
 }
 
@@ -720,7 +846,7 @@ function startSpin(){
     reel.style.transform = `translateX(${-xm}px)`;
     const idx = Math.floor((x + wrap.clientWidth / 2) / step);
     if (idx !== lastIdx) {
-      tickSound(1 - t);
+      playTick(1 - t);
       const domIdx = Math.floor((xm + wrap.clientWidth / 2) / step);
       const el = reel.children[domIdx];
       if (el) {
@@ -745,7 +871,7 @@ function startSpin(){
 function land(winner, winEl){
   spinning = false;
   winEl.classList.add('winner');
-  landSound();
+  playLand();
   if (!reduceMotion) {
     $('reelWrap').classList.add('shake');
     setTimeout(() => $('reelWrap').classList.remove('shake'), 500);
