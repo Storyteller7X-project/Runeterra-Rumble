@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runeterra Rumble</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e14;
+  --panel:#121826;
+  --panel2:#0e1420;
+  --line:#2a3244;
+  --gold:#c8aa6e;
+  --gold-bright:#f0e6d2;
+  --text:#dfe6f2;
+  --muted:#8b96ab;
+  --danger:#e0393f;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Rubik',sans-serif;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(600px 400px at 15% 10%, rgba(200,170,110,.07), transparent 70%),
+    radial-gradient(700px 500px at 85% 90%, rgba(79,212,199,.05), transparent 70%),
+    radial-gradient(500px 400px at 80% 15%, rgba(224,111,216,.05), transparent 70%);
+}
+#app,#loginScreen{position:relative;z-index:1}
+
+/* ===== LOGIN ===== */
+#loginScreen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.loginBox{
+  width:100%;max-width:380px;background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;padding:36px 32px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.logo{
+  font-family:'Cinzel',serif;font-weight:900;text-align:center;
+  font-size:32px;line-height:1.1;letter-spacing:.06em;
+  background:linear-gradient(180deg,#f0e6d2 0%,#c8aa6e 55%,#8a6d3b 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-transform:uppercase;
+}
+.logoSub{
+  text-align:center;color:var(--muted);font-size:12px;letter-spacing:.35em;
+  text-transform:uppercase;margin-top:6px;
+}
+.loginBox form{margin-top:28px;display:flex;flex-direction:column;gap:14px}
+.loginBox label{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.loginBox input{
+  width:100%;margin-top:6px;padding:12px 14px;border-radius:6px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  font-family:'Rubik',sans-serif;font-size:15px;outline:none;
+  transition:border-color .2s;
+}
+.loginBox input:focus{border-color:var(--gold)}
+.btnGold{
+  margin-top:10px;padding:13px;border:none;border-radius:6px;cursor:pointer;
+  font-family:'Cinzel',serif;font-weight:700;font-size:16px;letter-spacing:.12em;
+  text-transform:uppercase;color:#1a1206;
+  background:linear-gradient(180deg,#f0e6d2,#c8aa6e 60%,#a8894e);
+  box-shadow:0 4px 18px rgba(200,170,110,.25);
+  transition:transform .12s, box-shadow .2s, filter .2s;
+}
+.btnGold:hover{filter:brightness(1.08);box-shadow:0 6px 26px rgba(200,170,110,.4)}
+.btnGold:active{transform:translateY(1px)}
+.btnGold:disabled{filter:grayscale(.7) brightness(.6);cursor:not-allowed;box-shadow:none}
+.loginErr{color:var(--danger);font-size:13px;text-align:center;min-height:18px}
+
+/* ===== APP ===== */
+#app{display:none;min-height:100vh;flex-direction:column}
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:1px solid var(--line);
+  background:rgba(10,14,20,.8);backdrop-filter:blur(6px);
+  position:sticky;top:0;z-index:20;
+}
+header .logo{font-size:20px}
+.userBox{display:flex;align-items:center;gap:14px;font-size:14px}
+.userName{color:var(--gold-bright);font-weight:500}
+.miniBtn{
+  background:none;border:1px solid var(--line);color:var(--muted);
+  padding:6px 12px;border-radius:5px;cursor:pointer;font-family:'Rubik',sans-serif;
+  font-size:13px;transition:border-color .2s,color .2s;
+}
+.miniBtn:hover{border-color:var(--gold);color:var(--gold-bright)}
+
+main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 16px 48px;gap:26px}
+
+/* progress */
+.stage{
+  text-align:center;
+}
+.stageCount{
+  font-family:'Cinzel',serif;font-weight:700;font-size:14px;letter-spacing:.3em;
+  color:var(--muted);text-transform:uppercase;
+}
+.stageTarget{
+  font-family:'Cinzel',serif;font-weight:900;font-size:26px;letter-spacing:.08em;
+  color:var(--gold-bright);text-transform:uppercase;margin-top:4px;
+}
+
+/* ===== REEL ===== */
+.reelWrap{
+  position:relative;width:min(1100px,100%);
+  border:1px solid var(--line);border-radius:10px;
+  background:linear-gradient(180deg,#0d1320,#0a0e16);
+  overflow:hidden;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.6);
+}
+.reelWrap::before,.reelWrap::after{
+  content:"";position:absolute;top:0;bottom:0;width:120px;z-index:5;pointer-events:none;
+}
+.reelWrap::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+.reelWrap::after{right:0;background:linear-gradient(270deg,var(--bg),transparent)}
+.reel{
+  display:flex;gap:10px;padding:22px 0;
+  will-change:transform;
+}
+.card{
+  flex:0 0 var(--cw);width:var(--cw);
+  border-radius:8px;overflow:hidden;position:relative;
+  background:var(--panel2);
+  border:1px solid color-mix(in srgb, var(--rc) 45%, #222a3a);
+  box-shadow:0 0 0 rgba(0,0,0,0);
+}
+.card img,.card .imgFallback{
+  width:100%;aspect-ratio:1/1;object-fit:cover;display:block;
+  filter:saturate(1.05);
+}
+.card .imgFallback{
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:900;font-size:42px;color:var(--rc);
+  background:radial-gradient(circle at 50% 30%, color-mix(in srgb,var(--rc) 25%, #0c1220), #0a0e16);
+}
+.card .cname{
+  padding:7px 4px;text-align:center;font-size:12px;font-weight:500;
+  letter-spacing:.04em;color:var(--gold-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  border-top:1px solid color-mix(in srgb, var(--rc) 35%, #1a2233);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--rc) 12%, #0d1320), #0b0f18);
+}
+.card::after{ /* hextech corner brackets */
+  content:"";position:absolute;inset:4px;pointer-events:none;border-radius:5px;
+  background:
+    linear-gradient(var(--rc),var(--rc)) top left / 12px 2px,
+    linear-gradient(var(--rc),var(--rc)) top left / 2px 12px,
+    linear-gradient(var(--rc),var(--rc)) top right / 12px 2px,
+    linear-gradient(var(--rc),var(--rc)) top right / 2px 12px,
+    linear-gradient(var(--rc),var(--rc)) bottom left / 12px 2px,
+    linear-gradient(var(--rc),var(--rc)) bottom left / 2px 12px,
+    linear-gradient(var(--rc),var(--rc)) bottom right / 12px 2px,
+    linear-gradient(var(--rc),var(--rc)) bottom right / 2px 12px;
+  background-repeat:no-repeat;opacity:.55;
+}
+.card.pass{box-shadow:0 0 22px color-mix(in srgb, var(--rc) 55%, transparent)}
+.card.winner{
+  border-color:var(--rc);
+  box-shadow:0 0 34px color-mix(in srgb, var(--rc) 80%, transparent), 0 0 90px color-mix(in srgb, var(--rc) 35%, transparent);
+  animation:winnerPulse 1s ease-out;
+}
+.card.winner::after{opacity:1}
+@keyframes winnerPulse{
+  0%{transform:scale(1)} 35%{transform:scale(1.12)} 100%{transform:scale(1.06)}
+}
+.marker{
+  position:absolute;top:0;bottom:0;left:50%;width:2px;transform:translateX(-1px);
+  background:linear-gradient(180deg,transparent,var(--gold) 20%,var(--gold) 80%,transparent);
+  z-index:6;pointer-events:none;
+  box-shadow:0 0 12px rgba(200,170,110,.8);
+}
+.marker::before,.marker::after{
+  content:"";position:absolute;left:50%;transform:translateX(-50%);
+  border:8px solid transparent;
+}
+.marker::before{top:-2px;border-top:11px solid var(--gold)}
+.marker::after{bottom:-2px;border-bottom:11px solid var(--gold)}
+
+.reelWrap.shake{animation:shake .45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{
+  10%,90%{transform:translate3d(-2px,0,0)}
+  20%,80%{transform:translate3d(3px,1px,0)}
+  30%,50%,70%{transform:translate3d(-5px,-1px,0)}
+  40%,60%{transform:translate3d(5px,1px,0)}
+}
+
+/* spin button */
+.spinRow{display:flex;flex-direction:column;align-items:center;gap:10px}
+#spinBtn{min-width:280px;font-size:18px;padding:16px 34px}
+.soundHint{font-size:12px;color:var(--muted)}
+
+/* announce banner */
+#announce{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  z-index:40;pointer-events:none;
+}
+#announce .annText{
+  font-family:'Cinzel',serif;font-weight:900;text-transform:uppercase;
+  font-size:clamp(40px,9vw,110px);letter-spacing:.06em;color:var(--ac,#fff);
+  text-shadow:0 0 40px color-mix(in srgb,var(--ac,#fff) 70%,transparent),0 4px 0 rgba(0,0,0,.5);
+  animation:annPop 1.5s cubic-bezier(.2,1.4,.3,1) forwards;
+}
+@keyframes annPop{
+  0%{opacity:0;transform:scale(.4)}
+  18%{opacity:1;transform:scale(1.08)}
+  30%{transform:scale(1)}
+  80%{opacity:1}
+  100%{opacity:0;transform:scale(1.04)}
+}
+
+/* particles */
+.particle{
+  position:fixed;width:8px;height:8px;border-radius:2px;z-index:39;pointer-events:none;
+}
+
+/* ===== DECKS ===== */
+.decks{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:min(1100px,100%);
+}
+.deck{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:16px;transition:border-color .3s, box-shadow .3s;
+}
+.deck h3{
+  font-family:'Cinzel',serif;font-weight:700;font-size:15px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:12px;
+}
+.slots{display:flex;gap:12px;justify-content:center}
+.slot{
+  width:104px;border-radius:8px;border:1px dashed var(--line);
+  background:var(--panel2);overflow:hidden;position:relative;
+  min-height:138px;display:flex;flex-direction:column;
+  transition:border-color .3s, box-shadow .3s, transform .3s;
+}
+.slot .qm{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:34px;color:#2e3850;font-weight:700;
+}
+.slot.filled{border-style:solid;border-color:color-mix(in srgb, var(--rc) 60%, #222a3a)}
+.slot.filled img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+.slot .sname{
+  padding:6px 3px;text-align:center;font-size:11px;font-weight:500;color:var(--gold-bright);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--rc) 12%, #0d1320), #0b0f18);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.slot.target{
+  border-color:var(--gold);border-style:solid;
+  box-shadow:0 0 18px rgba(200,170,110,.35);
+  animation:slotPulse 1.4s ease-in-out infinite;
+}
+@keyframes slotPulse{
+  0%,100%{box-shadow:0 0 10px rgba(200,170,110,.25)}
+  50%{box-shadow:0 0 24px rgba(200,170,110,.6)}
+}
+.slot.justFilled{animation:slotLand .5s cubic-bezier(.2,1.4,.3,1)}
+@keyframes slotLand{0%{transform:scale(.6)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+/* flying card */
+.flyCard{
+  position:fixed;z-index:38;border-radius:8px;overflow:hidden;pointer-events:none;
+  border:1px solid var(--rc);box-shadow:0 0 30px color-mix(in srgb,var(--rc) 60%,transparent);
+}
+.flyCard img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ===== FINALE ===== */
+#finale{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(6,9,14,.92);backdrop-filter:blur(8px);z-index:50;padding:20px;
+}
+.finaleBox{width:min(900px,100%);text-align:center}
+.finaleBox h2{
+  font-family:'Cinzel',serif;font-weight:900;font-size:clamp(28px,5vw,52px);
+  letter-spacing:.08em;text-transform:uppercase;
+  background:linear-gradient(180deg,#f0e6d2,#c8aa6e 60%,#8a6d3b);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  margin-bottom:26px;
+}
+.finaleDecks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}
+.fDeck{
+  background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:14px;
+  opacity:0;transform:translateY(24px);
+  animation:fIn .6s cubic-bezier(.2,1.2,.3,1) forwards;
+}
+.fDeck:nth-child(2){animation-delay:.25s}
+.fDeck:nth-child(3){animation-delay:.5s}
+@keyframes fIn{to{opacity:1;transform:translateY(0)}}
+.fDeck h3{font-family:'Cinzel',serif;color:var(--gold);letter-spacing:.15em;font-size:14px;text-transform:uppercase;margin-bottom:10px}
+.fPair{display:flex;gap:10px;justify-content:center}
+.fCh{width:96px}
+.fCh img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:6px;border:1px solid var(--rc);box-shadow:0 0 16px color-mix(in srgb,var(--rc) 40%,transparent)}
+.fCh div{font-size:12px;margin-top:5px;color:var(--gold-bright)}
+
+@media (prefers-reduced-motion: reduce){
+  .reelWrap.shake,#announce .annText,.slot.target,.slot.justFilled,.card.winner{animation:none}
+}
+@media (max-width:820px){
+  .decks,.finaleDecks{grid-template-columns:1fr}
+  .slots{justify-content:center}
+  header{padding:12px 14px}
+  header .logo{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="loginBox">
+    <div class="logo">Runeterra<br>Rumble</div>
+    <div class="logoSub">Losování championů</div>
+    <form id="loginForm">
+      <div>
+        <label for="loginUser">Jméno</label>
+        <input id="loginUser" autocomplete="username" required>
+      </div>
+      <div>
+        <label for="loginPass">Heslo</label>
+        <input id="loginPass" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="loginErr" id="loginErr"></div>
+      <button class="btnGold" type="submit">Přihlásit se</button>
+    </form>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo">Runeterra Rumble</div>
+    <div class="userBox">
+      <span class="userName" id="userLabel"></span>
+      <button class="miniBtn" id="soundBtn" title="Zvuk">🔊</button>
+      <button class="miniBtn" id="resetBtn">Reset</button>
+      <button class="miniBtn" id="logoutBtn">Odhlásit</button>
+    </div>
+  </header>
+  <main>
+    <div class="stage">
+      <div class="stageCount" id="stageCount"></div>
+      <div class="stageTarget" id="stageTarget"></div>
+    </div>
+
+    <div class="reelWrap" id="reelWrap">
+      <div class="reel" id="reel"></div>
+      <div class="marker"></div>
+    </div>
+
+    <div class="spinRow">
+      <button class="btnGold" id="spinBtn">Roztočit</button>
+    </div>
+
+    <div class="decks" id="decks"></div>
+  </main>
+</div>
+
+<div id="announce"><div class="annText" id="annText"></div></div>
+
+<div id="finale">
+  <div class="finaleBox">
+    <h2>Kombinace je hotová</h2>
+    <div class="finaleDecks" id="finaleDecks"></div>
+    <button class="btnGold" id="againBtn">Nový los</button>
+  </div>
+</div>
+
+<script>
+/* ================= KONFIGURACE ================= */
+
+/* Účty: sem přidáte další hráče */
+const USERS = {
+  "Storyteller": "xzIvOaLvun49"
+};
+
+/* Pool 20 championů. id = název souboru na Data Dragonu (bez mezer a apostrofů) */
+const CHAMPIONS = [
+  {name:"Garen",        id:"Garen",        region:"Demacia",        color:"#f8e7b0"},
+  {name:"Lux",          id:"Lux",          region:"Demacia",        color:"#f8e7b0"},
+  {name:"Fiora",        id:"Fiora",        region:"Demacia",        color:"#f8e7b0"},
+  {name:"Darius",       id:"Darius",       region:"Noxus",          color:"#e0393f"},
+  {name:"Katarina",     id:"Katarina",     region:"Noxus",          color:"#e0393f"},
+  {name:"Swain",        id:"Swain",        region:"Noxus",          color:"#e0393f"},
+  {name:"Yasuo",        id:"Yasuo",        region:"Ionia",          color:"#e06fd8"},
+  {name:"Ahri",         id:"Ahri",         region:"Ionia",          color:"#e06fd8"},
+  {name:"Zed",          id:"Zed",          region:"Ionia",          color:"#e06fd8"},
+  {name:"Ezreal",       id:"Ezreal",       region:"Piltover a Zaun",color:"#4fd4c7"},
+  {name:"Jinx",         id:"Jinx",         region:"Piltover a Zaun",color:"#4fd4c7"},
+  {name:"Heimerdinger", id:"Heimerdinger", region:"Piltover a Zaun",color:"#4fd4c7"},
+  {name:"Ashe",         id:"Ashe",         region:"Freljord",       color:"#5bb8ff"},
+  {name:"Braum",        id:"Braum",        region:"Freljord",       color:"#5bb8ff"},
+  {name:"Thresh",       id:"Thresh",       region:"Shadow Isles",   color:"#46e0a0"},
+  {name:"Elise",        id:"Elise",        region:"Shadow Isles",   color:"#46e0a0"},
+  {name:"Miss Fortune", id:"MissFortune",  region:"Bilgewater",     color:"#ff8a3c"},
+  {name:"Gangplank",    id:"Gangplank",    region:"Bilgewater",     color:"#ff8a3c"},
+  {name:"Leona",        id:"Leona",        region:"Targon",         color:"#a08cff"},
+  {name:"Azir",         id:"Azir",         region:"Shurima",        color:"#e9a83b"}
+];
+
+const imgUrl = c => `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${c.id}_0.jpg`;
+
+/* Pořadí losů: deck (0-2), slot (0-1) */
+const SPIN_ORDER = [
+  {deck:0, slot:0, label:"Deck 1: první champion"},
+  {deck:0, slot:1, label:"Deck 1: druhý champion"},
+  {deck:1, slot:0, label:"Deck 2: první champion"},
+  {deck:1, slot:1, label:"Deck 2: druhý champion"},
+  {deck:2, slot:0, label:"Deck 3: první champion"},
+  {deck:2, slot:1, label:"Deck 3: druhý champion"}
+];
+
+const REEL_LEN = 64;      /* počet karet v pásu */
+const WIN_INDEX = 56;     /* kde sedí vítěz */
+const SPIN_MS = 6400;     /* délka točení */
+
+/* ================= STAV ================= */
+let currentUser = null;
+let pool = [];
+let decks = [[null,null],[null,null],[null,null]];
+let spinIndex = 0;
+let spinning = false;
+let soundOn = true;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const $ = id => document.getElementById(id);
+
+/* ================= LOGIN ================= */
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const u = $('loginUser').value.trim();
+  const p = $('loginPass').value;
+  if (USERS[u] !== undefined && USERS[u] === p) {
+    currentUser = u;
+    $('loginErr').textContent = '';
+    $('loginScreen').style.display = 'none';
+    $('app').style.display = 'flex';
+    $('userLabel').textContent = u;
+    resetAll();
+  } else {
+    $('loginErr').textContent = 'Špatné jméno nebo heslo.';
+  }
+});
+$('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  $('app').style.display = 'none';
+  $('loginScreen').style.display = 'flex';
+  $('loginPass').value = '';
+});
+
+/* ================= ZVUK ================= */
+let audioCtx = null;
+function ac(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function tickSound(speed){
+  if(!soundOn) return;
+  const ctx = ac(), t = ctx.currentTime;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'square';
+  o.frequency.setValueAtTime(650 + speed*250, t);
+  g.gain.setValueAtTime(0.06, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + 0.06);
+}
+function landSound(){
+  if(!soundOn) return;
+  const ctx = ac(), t = ctx.currentTime;
+  const o1 = ctx.createOscillator(), g1 = ctx.createGain();
+  o1.type = 'sine';
+  o1.frequency.setValueAtTime(140, t);
+  o1.frequency.exponentialRampToValueAtTime(50, t + 0.35);
+  g1.gain.setValueAtTime(0.5, t);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  o1.connect(g1).connect(ctx.destination);
+  o1.start(t); o1.stop(t + 0.45);
+  const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+  o2.type = 'triangle';
+  o2.frequency.setValueAtTime(1400, t + 0.02);
+  o2.frequency.exponentialRampToValueAtTime(600, t + 0.5);
+  g2.gain.setValueAtTime(0.12, t + 0.02);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+  o2.connect(g2).connect(ctx.destination);
+  o2.start(t + 0.02); o2.stop(t + 0.6);
+}
+$('soundBtn').addEventListener('click', () => {
+  soundOn = !soundOn;
+  $('soundBtn').textContent = soundOn ? '🔊' : '🔇';
+});
+
+/* ================= UI ================= */
+function cardWidth(){ return window.innerWidth < 640 ? 96 : 128; }
+document.documentElement.style.setProperty('--cw', cardWidth() + 'px');
+window.addEventListener('resize', () => {
+  document.documentElement.style.setProperty('--cw', cardWidth() + 'px');
+});
+
+function cardEl(ch){
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.style.setProperty('--rc', ch.color);
+  const img = document.createElement('img');
+  img.src = imgUrl(ch);
+  img.alt = ch.name;
+  img.draggable = false;
+  img.onerror = () => {
+    const f = document.createElement('div');
+    f.className = 'imgFallback';
+    f.textContent = ch.name[0];
+    img.replaceWith(f);
+  };
+  const n = document.createElement('div');
+  n.className = 'cname';
+  n.textContent = ch.name;
+  d.append(img, n);
+  return d;
+}
+
+function renderDecks(){
+  const wrap = $('decks');
+  wrap.innerHTML = '';
+  const target = spinIndex < 6 ? SPIN_ORDER[spinIndex] : null;
+  decks.forEach((deck, di) => {
+    const dEl = document.createElement('div');
+    dEl.className = 'deck';
+    const h = document.createElement('h3');
+    h.textContent = 'Deck ' + (di + 1);
+    dEl.appendChild(h);
+    const slots = document.createElement('div');
+    slots.className = 'slots';
+    deck.forEach((ch, si) => {
+      const s = document.createElement('div');
+      s.className = 'slot';
+      s.dataset.deck = di; s.dataset.slot = si;
+      if (ch) {
+        s.classList.add('filled');
+        s.style.setProperty('--rc', ch.color);
+        const img = document.createElement('img');
+        img.src = imgUrl(ch); img.alt = ch.name; img.draggable = false;
+        img.onerror = () => {
+          const f = document.createElement('div');
+          f.className = 'imgFallback';
+          f.style.flex = '1';
+          f.textContent = ch.name[0];
+          img.replaceWith(f);
+        };
+        const n = document.createElement('div');
+        n.className = 'sname'; n.textContent = ch.name;
+        s.append(img, n);
+      } else {
+        const q = document.createElement('div');
+        q.className = 'qm'; q.textContent = '?';
+        s.appendChild(q);
+        if (target && target.deck === di && target.slot === si) s.classList.add('target');
+      }
+      slots.appendChild(s);
+    });
+    dEl.appendChild(slots);
+    wrap.appendChild(dEl);
+  });
+}
+
+function renderStage(){
+  if (spinIndex < 6) {
+    $('stageCount').textContent = 'Los ' + (spinIndex + 1) + ' / 6';
+    $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
+    $('spinBtn').textContent = 'Roztočit';
+    $('spinBtn').disabled = spinning;
+  } else {
+    $('stageCount').textContent = 'Hotovo';
+    $('stageTarget').textContent = 'Všechny decky jsou obsazené';
+    $('spinBtn').disabled = true;
+  }
+}
+
+function fillReelIdle(){
+  const reel = $('reel');
+  reel.style.transition = 'none';
+  reel.style.transform = 'translateX(0)';
+  reel.innerHTML = '';
+  const src = pool.length ? pool : CHAMPIONS;
+  for (let i = 0; i < 14; i++) reel.appendChild(cardEl(src[i % src.length]));
+}
+
+/* ================= SPIN ================= */
+function buildReel(winner){
+  const reel = $('reel');
+  reel.innerHTML = '';
+  const items = [];
+  let last = null;
+  for (let i = 0; i < REEL_LEN; i++) {
+    if (i === WIN_INDEX) { items.push(winner); last = winner; continue; }
+    let pick;
+    do { pick = pool[Math.floor(Math.random() * pool.length)]; }
+    while (pool.length > 1 && pick === last);
+    items.push(pick); last = pick;
+  }
+  items.forEach(ch => reel.appendChild(cardEl(ch)));
+  return reel.children[WIN_INDEX];
+}
+
+function startSpin(){
+  if (spinning || spinIndex >= 6 || pool.length === 0) return;
+  spinning = true;
+  renderStage();
+  if (soundOn) ac();
+
+  const winner = pool[Math.floor(Math.random() * pool.length)];
+  const winEl = buildReel(winner);
+  const reel = $('reel');
+  const wrap = $('reelWrap');
+
+  const cw = cardWidth(), gap = 10, step = cw + gap;
+  const jitter = reduceMotion ? 0 : (Math.random() * 0.7 - 0.35) * cw;
+  const dist = WIN_INDEX * step + cw / 2 - wrap.clientWidth / 2 + jitter;
+
+  reel.style.transition = 'none';
+  reel.style.transform = 'translateX(0)';
+  void reel.offsetWidth;
+  const dur = reduceMotion ? 700 : SPIN_MS;
+  reel.style.transition = `transform ${dur}ms cubic-bezier(0.11, 0.82, 0.11, 1)`;
+  reel.style.transform = `translateX(${-dist}px)`;
+
+  /* tikání podle karty pod ukazatelem */
+  let lastIdx = -1;
+  const t0 = performance.now();
+  function loop(now){
+    if (!spinning) return;
+    const m = new DOMMatrixReadOnly(getComputedStyle(reel).transform);
+    const x = -m.m41;
+    const idx = Math.floor((x + wrap.clientWidth / 2) / step);
+    if (idx !== lastIdx) {
+      const speed = Math.max(0, 1 - (now - t0) / dur);
+      tickSound(speed);
+      const el = reel.children[idx];
+      if (el) {
+        el.classList.add('pass');
+        setTimeout(() => el.classList.remove('pass'), 180);
+      }
+      lastIdx = idx;
+    }
+    if (now - t0 < dur) requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  setTimeout(() => land(winner, winEl), dur + 60);
+}
+
+function land(winner, winEl){
+  spinning = false;
+  winEl.classList.add('winner');
+  landSound();
+  if (!reduceMotion) {
+    $('reelWrap').classList.add('shake');
+    setTimeout(() => $('reelWrap').classList.remove('shake'), 500);
+    burst(winEl, winner.color);
+  }
+  announce(winner);
+
+  const target = SPIN_ORDER[spinIndex];
+  pool = pool.filter(c => c !== winner);
+
+  const finish = () => {
+    decks[target.deck][target.slot] = winner;
+    spinIndex++;
+    renderDecks();
+    renderStage();
+    const s = document.querySelector(`.slot[data-deck="${target.deck}"][data-slot="${target.slot}"]`);
+    if (s) s.classList.add('justFilled');
+    if (spinIndex >= 6) setTimeout(showFinale, 1100);
+  };
+  if (reduceMotion) { finish(); }
+  else { flyToSlot(winEl, winner, target, finish); }
+}
+
+function announce(ch){
+  const a = $('announce'), t = $('annText');
+  t.textContent = ch.name;
+  a.style.setProperty('--ac', ch.color);
+  a.style.display = 'flex';
+  t.style.animation = 'none';
+  void t.offsetWidth;
+  t.style.animation = '';
+  setTimeout(() => { a.style.display = 'none'; }, 1500);
+}
+
+function burst(el, color){
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let i = 0; i < 26; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = Math.random() < 0.4 ? '#c8aa6e' : color;
+    p.style.left = cx + 'px'; p.style.top = cy + 'px';
+    document.body.appendChild(p);
+    const ang = Math.random() * Math.PI * 2;
+    const v = 120 + Math.random() * 240;
+    p.animate([
+      {transform:'translate(0,0) rotate(0deg)', opacity:1},
+      {transform:`translate(${Math.cos(ang)*v}px, ${Math.sin(ang)*v + 80}px) rotate(${Math.random()*540-270}deg)`, opacity:0}
+    ], {duration: 800 + Math.random() * 500, easing:'cubic-bezier(.2,.8,.4,1)'}).onfinish = () => p.remove();
+  }
+}
+
+function flyToSlot(winEl, ch, target, done){
+  const from = winEl.querySelector('img, .imgFallback').getBoundingClientRect();
+  const slotEl = document.querySelector(`.slot[data-deck="${target.deck}"][data-slot="${target.slot}"]`);
+  const to = slotEl ? slotEl.getBoundingClientRect() : from;
+  const fly = document.createElement('div');
+  fly.className = 'flyCard';
+  fly.style.setProperty('--rc', ch.color);
+  fly.style.left = from.left + 'px'; fly.style.top = from.top + 'px';
+  fly.style.width = from.width + 'px'; fly.style.height = from.height + 'px';
+  const img = document.createElement('img');
+  img.src = imgUrl(ch);
+  img.onerror = () => { fly.style.background = ch.color; img.remove(); };
+  fly.appendChild(img);
+  document.body.appendChild(fly);
+  fly.animate([
+    {left: from.left+'px', top: from.top+'px', width: from.width+'px', height: from.height+'px', offset: 0},
+    {left: to.left+'px', top: to.top+'px', width: to.width+'px', height: to.width+'px', offset: 1}
+  ], {duration: 650, delay: 550, easing:'cubic-bezier(.3,.9,.2,1)', fill:'forwards'}).onfinish = () => {
+    fly.remove();
+    done();
+  };
+}
+
+/* ================= FINÁLE / RESET ================= */
+function showFinale(){
+  const wrap = $('finaleDecks');
+  wrap.innerHTML = '';
+  decks.forEach((deck, di) => {
+    const d = document.createElement('div');
+    d.className = 'fDeck';
+    const h = document.createElement('h3');
+    h.textContent = 'Deck ' + (di + 1);
+    d.appendChild(h);
+    const pair = document.createElement('div');
+    pair.className = 'fPair';
+    deck.forEach(ch => {
+      const c = document.createElement('div');
+      c.className = 'fCh';
+      c.style.setProperty('--rc', ch.color);
+      const img = document.createElement('img');
+      img.src = imgUrl(ch); img.alt = ch.name;
+      img.onerror = () => { img.style.background = ch.color; };
+      const n = document.createElement('div');
+      n.textContent = ch.name;
+      c.append(img, n);
+      pair.appendChild(c);
+    });
+    d.appendChild(pair);
+    wrap.appendChild(d);
+  });
+  $('finale').style.display = 'flex';
+}
+
+function resetAll(){
+  pool = [...CHAMPIONS];
+  decks = [[null,null],[null,null],[null,null]];
+  spinIndex = 0;
+  spinning = false;
+  $('finale').style.display = 'none';
+  fillReelIdle();
+  renderDecks();
+  renderStage();
+}
+
+$('spinBtn').addEventListener('click', startSpin);
+$('resetBtn').addEventListener('click', () => { if (!spinning) resetAll(); });
+$('againBtn').addEventListener('click', resetAll);
+</script>
+
+</body>
+</html>
