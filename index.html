@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -88,6 +88,7 @@ header{
   position:sticky;top:0;z-index:20;
 }
 header .logo{font-size:20px}
+.hSub{font-size:10px;color:var(--muted);letter-spacing:.28em;text-transform:uppercase;margin-top:2px}
 .userBox{display:flex;align-items:center;gap:14px;font-size:14px}
 .userName{color:var(--gold-bright);font-weight:500}
 .miniBtn{
@@ -317,30 +318,33 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 <div id="loginScreen">
   <div class="loginBox">
     <div class="logo">Runeterra<br>Rumble</div>
-    <div class="logoSub">Losování championů</div>
+    <div class="logoSub">powered by Storyteller</div>
     <form id="loginForm">
       <div>
-        <label for="loginUser">Jméno</label>
+        <label for="loginUser">Username</label>
         <input id="loginUser" autocomplete="username" required>
       </div>
       <div>
-        <label for="loginPass">Heslo</label>
+        <label for="loginPass">Password</label>
         <input id="loginPass" type="password" autocomplete="current-password" required>
       </div>
       <div class="loginErr" id="loginErr"></div>
-      <button class="btnGold" type="submit">Přihlásit se</button>
+      <button class="btnGold" type="submit">Sign in</button>
     </form>
   </div>
 </div>
 
 <div id="app">
   <header>
-    <div class="logo">Runeterra Rumble</div>
+    <div class="hLogo">
+      <div class="logo">Runeterra Rumble</div>
+      <div class="hSub">powered by Storyteller</div>
+    </div>
     <div class="userBox">
       <span class="userName" id="userLabel"></span>
-      <button class="miniBtn" id="soundBtn" title="Zvuk">🔊</button>
+      <button class="miniBtn" id="soundBtn" title="Sound">🔊</button>
       <button class="miniBtn" id="resetBtn">Reset</button>
-      <button class="miniBtn" id="logoutBtn">Odhlásit</button>
+      <button class="miniBtn" id="logoutBtn">Sign out</button>
     </div>
   </header>
   <main>
@@ -355,7 +359,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
     </div>
 
     <div class="spinRow">
-      <button class="btnGold" id="spinBtn">Roztočit</button>
+      <button class="btnGold" id="spinBtn">Spin</button>
     </div>
 
     <div class="decks" id="decks"></div>
@@ -366,70 +370,71 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 
 <div id="finale">
   <div class="finaleBox">
-    <h2>Kombinace je hotová</h2>
+    <h2>Draft complete</h2>
     <div class="finaleDecks" id="finaleDecks"></div>
-    <button class="btnGold" id="againBtn">Nový los</button>
+    <button class="btnGold" id="againBtn">New draft</button>
   </div>
 </div>
 
 <script>
-/* ================= KONFIGURACE ================= */
+/* ================= CONFIG ================= */
 
-/* Účty: sem přidáte další hráče */
+/* Accounts: add more players here */
 const USERS = {
   "Storyteller": "xzIvOaLvun49"
 };
 
-/* Pool 20 championů. id = název souboru na Data Dragonu (bez mezer a apostrofů) */
+/* Pool of 20 champions. id = Data Dragon file name (no spaces or apostrophes) */
 const CHAMPIONS = [
-  {name:"Garen",        id:"Garen",        region:"Demacia",        color:"#f8e7b0"},
-  {name:"Lux",          id:"Lux",          region:"Demacia",        color:"#f8e7b0"},
-  {name:"Fiora",        id:"Fiora",        region:"Demacia",        color:"#f8e7b0"},
-  {name:"Darius",       id:"Darius",       region:"Noxus",          color:"#e0393f"},
-  {name:"Katarina",     id:"Katarina",     region:"Noxus",          color:"#e0393f"},
-  {name:"Swain",        id:"Swain",        region:"Noxus",          color:"#e0393f"},
-  {name:"Yasuo",        id:"Yasuo",        region:"Ionia",          color:"#e06fd8"},
-  {name:"Ahri",         id:"Ahri",         region:"Ionia",          color:"#e06fd8"},
-  {name:"Zed",          id:"Zed",          region:"Ionia",          color:"#e06fd8"},
-  {name:"Ezreal",       id:"Ezreal",       region:"Piltover a Zaun",color:"#4fd4c7"},
-  {name:"Jinx",         id:"Jinx",         region:"Piltover a Zaun",color:"#4fd4c7"},
-  {name:"Heimerdinger", id:"Heimerdinger", region:"Piltover a Zaun",color:"#4fd4c7"},
-  {name:"Ashe",         id:"Ashe",         region:"Freljord",       color:"#5bb8ff"},
-  {name:"Braum",        id:"Braum",        region:"Freljord",       color:"#5bb8ff"},
-  {name:"Thresh",       id:"Thresh",       region:"Shadow Isles",   color:"#46e0a0"},
-  {name:"Elise",        id:"Elise",        region:"Shadow Isles",   color:"#46e0a0"},
-  {name:"Miss Fortune", id:"MissFortune",  region:"Bilgewater",     color:"#ff8a3c"},
-  {name:"Gangplank",    id:"Gangplank",    region:"Bilgewater",     color:"#ff8a3c"},
-  {name:"Leona",        id:"Leona",        region:"Targon",         color:"#a08cff"},
-  {name:"Azir",         id:"Azir",         region:"Shurima",        color:"#e9a83b"}
+  {name:"Garen",        id:"Garen",        region:"Demacia",         color:"#f8e7b0"},
+  {name:"Lux",          id:"Lux",          region:"Demacia",         color:"#f8e7b0"},
+  {name:"Fiora",        id:"Fiora",        region:"Demacia",         color:"#f8e7b0"},
+  {name:"Darius",       id:"Darius",       region:"Noxus",           color:"#e0393f"},
+  {name:"Katarina",     id:"Katarina",     region:"Noxus",           color:"#e0393f"},
+  {name:"Swain",        id:"Swain",        region:"Noxus",           color:"#e0393f"},
+  {name:"Yasuo",        id:"Yasuo",        region:"Ionia",           color:"#e06fd8"},
+  {name:"Ahri",         id:"Ahri",         region:"Ionia",           color:"#e06fd8"},
+  {name:"Zed",          id:"Zed",          region:"Ionia",           color:"#e06fd8"},
+  {name:"Ezreal",       id:"Ezreal",       region:"Piltover & Zaun", color:"#4fd4c7"},
+  {name:"Jinx",         id:"Jinx",         region:"Piltover & Zaun", color:"#4fd4c7"},
+  {name:"Heimerdinger", id:"Heimerdinger", region:"Piltover & Zaun", color:"#4fd4c7"},
+  {name:"Ashe",         id:"Ashe",         region:"Freljord",        color:"#5bb8ff"},
+  {name:"Braum",        id:"Braum",        region:"Freljord",        color:"#5bb8ff"},
+  {name:"Thresh",       id:"Thresh",       region:"Shadow Isles",    color:"#46e0a0"},
+  {name:"Elise",        id:"Elise",        region:"Shadow Isles",    color:"#46e0a0"},
+  {name:"Miss Fortune", id:"MissFortune",  region:"Bilgewater",      color:"#ff8a3c"},
+  {name:"Gangplank",    id:"Gangplank",    region:"Bilgewater",      color:"#ff8a3c"},
+  {name:"Leona",        id:"Leona",        region:"Targon",          color:"#a08cff"},
+  {name:"Azir",         id:"Azir",         region:"Shurima",         color:"#e9a83b"}
 ];
 
 const imgUrl = c => `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${c.id}_0.jpg`;
 
-/* Pořadí losů: deck (0-2), slot (0-1) */
+/* Spin order: deck (0-2), slot (0-1) */
 const SPIN_ORDER = [
-  {deck:0, slot:0, label:"Deck 1: první champion"},
-  {deck:0, slot:1, label:"Deck 1: druhý champion"},
-  {deck:1, slot:0, label:"Deck 2: první champion"},
-  {deck:1, slot:1, label:"Deck 2: druhý champion"},
-  {deck:2, slot:0, label:"Deck 3: první champion"},
-  {deck:2, slot:1, label:"Deck 3: druhý champion"}
+  {deck:0, slot:0, label:"Deck 1: first champion"},
+  {deck:0, slot:1, label:"Deck 1: second champion"},
+  {deck:1, slot:0, label:"Deck 2: first champion"},
+  {deck:1, slot:1, label:"Deck 2: second champion"},
+  {deck:2, slot:0, label:"Deck 3: first champion"},
+  {deck:2, slot:1, label:"Deck 3: second champion"}
 ];
 
-const REEL_LEN = 64;      /* počet karet v pásu */
-const WIN_INDEX = 56;     /* kde sedí vítěz */
-const SPIN_MS = 6400;     /* délka točení */
+const SPIN_MS = 6800;      /* spin duration */
+const REVOLUTIONS = 5;     /* full loops of the carousel before landing */
 
-/* ================= STAV ================= */
+/* ================= STATE ================= */
 let currentUser = null;
 let pool = [];
 let decks = [[null,null],[null,null],[null,null]];
 let spinIndex = 0;
 let spinning = false;
 let soundOn = true;
+let seq = [];              /* current carousel order, each champion exactly once */
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const $ = id => document.getElementById(id);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 /* ================= LOGIN ================= */
 $('loginForm').addEventListener('submit', e => {
@@ -444,7 +449,7 @@ $('loginForm').addEventListener('submit', e => {
     $('userLabel').textContent = u;
     resetAll();
   } else {
-    $('loginErr').textContent = 'Špatné jméno nebo heslo.';
+    $('loginErr').textContent = 'Wrong username or password.';
   }
 });
 $('logoutBtn').addEventListener('click', () => {
@@ -454,39 +459,125 @@ $('logoutBtn').addEventListener('click', () => {
   $('loginPass').value = '';
 });
 
-/* ================= ZVUK ================= */
-let audioCtx = null;
-function ac(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
-function tickSound(speed){
-  if(!soundOn) return;
-  const ctx = ac(), t = ctx.currentTime;
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = 'square';
-  o.frequency.setValueAtTime(650 + speed*250, t);
-  g.gain.setValueAtTime(0.06, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-  o.connect(g).connect(ctx.destination);
-  o.start(t); o.stop(t + 0.06);
+/* ================= AUDIO ================= */
+let audioCtx = null, master = null, noiseBuf = null;
+function ac(){
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = audioCtx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 5; comp.attack.value = 0.002; comp.release.value = 0.2;
+    master = audioCtx.createGain();
+    master.gain.value = 0.9;
+    master.connect(comp).connect(audioCtx.destination);
+    const len = audioCtx.sampleRate * 2;
+    noiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
 }
-function landSound(){
-  if(!soundOn) return;
+function noise(ctx){ const s = ctx.createBufferSource(); s.buffer = noiseBuf; return s; }
+
+/* mechanical tick: filtered noise click + low knock */
+function tickSound(speed){
+  if (!soundOn) return;
   const ctx = ac(), t = ctx.currentTime;
-  const o1 = ctx.createOscillator(), g1 = ctx.createGain();
-  o1.type = 'sine';
-  o1.frequency.setValueAtTime(140, t);
-  o1.frequency.exponentialRampToValueAtTime(50, t + 0.35);
-  g1.gain.setValueAtTime(0.5, t);
-  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-  o1.connect(g1).connect(ctx.destination);
-  o1.start(t); o1.stop(t + 0.45);
-  const o2 = ctx.createOscillator(), g2 = ctx.createGain();
-  o2.type = 'triangle';
-  o2.frequency.setValueAtTime(1400, t + 0.02);
-  o2.frequency.exponentialRampToValueAtTime(600, t + 0.5);
-  g2.gain.setValueAtTime(0.12, t + 0.02);
-  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-  o2.connect(g2).connect(ctx.destination);
-  o2.start(t + 0.02); o2.stop(t + 0.6);
+  const s = noise(ctx);
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = 1500 + speed * 900; f.Q.value = 7;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.5, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  s.connect(f).connect(g).connect(master);
+  s.start(t); s.stop(t + 0.06);
+  const o = ctx.createOscillator(), g2 = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(240, t);
+  o.frequency.exponentialRampToValueAtTime(85, t + 0.07);
+  g2.gain.setValueAtTime(0.22, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  o.connect(g2).connect(master);
+  o.start(t); o.stop(t + 0.09);
+}
+
+/* tension riser while the reel slows down */
+let riser = null;
+function startRiser(dur){
+  if (!soundOn) return;
+  const ctx = ac(), t = ctx.currentTime, sec = dur / 1000;
+  const s = noise(ctx); s.loop = true;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass'; f.Q.value = 1.4;
+  f.frequency.setValueAtTime(180, t);
+  f.frequency.exponentialRampToValueAtTime(2600, t + sec);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.16, t + sec * 0.85);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.15);
+  s.connect(f).connect(g).connect(master);
+  s.start(t); s.stop(t + sec + 0.3);
+  riser = s;
+}
+function stopRiser(){ try { if (riser) riser.stop(); } catch(e){} riser = null; }
+
+/* landing: sub drop, impact, crash and a slow metallic chord */
+function landSound(){
+  if (!soundOn) return;
+  const ctx = ac(), t = ctx.currentTime;
+
+  /* sub drop */
+  const sub = ctx.createOscillator(), sg = ctx.createGain();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(170, t);
+  sub.frequency.exponentialRampToValueAtTime(34, t + 0.6);
+  sg.gain.setValueAtTime(0.9, t);
+  sg.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+  sub.connect(sg).connect(master);
+  sub.start(t); sub.stop(t + 0.8);
+
+  /* impact thud */
+  const imp = noise(ctx);
+  const lf = ctx.createBiquadFilter();
+  lf.type = 'lowpass'; lf.frequency.setValueAtTime(500, t);
+  lf.frequency.exponentialRampToValueAtTime(90, t + 0.3);
+  const ig = ctx.createGain();
+  ig.gain.setValueAtTime(0.7, t);
+  ig.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+  imp.connect(lf).connect(ig).connect(master);
+  imp.start(t); imp.stop(t + 0.4);
+
+  /* bright crash */
+  const cr = noise(ctx);
+  const hf = ctx.createBiquadFilter();
+  hf.type = 'highpass'; hf.frequency.value = 3800;
+  const cg = ctx.createGain();
+  cg.gain.setValueAtTime(0.16, t + 0.02);
+  cg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+  cr.connect(hf).connect(cg).connect(master);
+  cr.start(t + 0.02); cr.stop(t + 1.4);
+
+  /* metallic power chord with echo */
+  const delay = ctx.createDelay(1); delay.delayTime.value = 0.27;
+  const fb = ctx.createGain(); fb.gain.value = 0.34;
+  const wet = ctx.createGain(); wet.gain.value = 0.5;
+  delay.connect(fb).connect(delay);
+  delay.connect(wet).connect(master);
+  const chordIn = ctx.createGain(); chordIn.connect(master); chordIn.connect(delay);
+  [73.42, 110.0, 146.83, 220.0].forEach((freq, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = 'sawtooth';
+    o.frequency.value = freq;
+    o.detune.value = (i % 2 ? 6 : -6);
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(2200, t);
+    f.frequency.exponentialRampToValueAtTime(320, t + 2);
+    g.gain.setValueAtTime(0.0001, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.075, t + 0.09);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+    o.connect(f).connect(g).connect(chordIn);
+    o.start(t + 0.03); o.stop(t + 2.3);
+  });
 }
 $('soundBtn').addEventListener('click', () => {
   soundOn = !soundOn;
@@ -567,41 +658,33 @@ function renderDecks(){
 
 function renderStage(){
   if (spinIndex < 6) {
-    $('stageCount').textContent = 'Los ' + (spinIndex + 1) + ' / 6';
+    $('stageCount').textContent = 'Spin ' + (spinIndex + 1) + ' / 6';
     $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
-    $('spinBtn').textContent = 'Roztočit';
+    $('spinBtn').textContent = 'Spin';
     $('spinBtn').disabled = spinning;
   } else {
-    $('stageCount').textContent = 'Hotovo';
-    $('stageTarget').textContent = 'Všechny decky jsou obsazené';
+    $('stageCount').textContent = 'Done';
+    $('stageTarget').textContent = 'All decks are locked in';
     $('spinBtn').disabled = true;
   }
 }
 
 function fillReelIdle(){
   const reel = $('reel');
-  reel.style.transition = 'none';
   reel.style.transform = 'translateX(0)';
   reel.innerHTML = '';
-  const src = pool.length ? pool : CHAMPIONS;
-  for (let i = 0; i < 14; i++) reel.appendChild(cardEl(src[i % src.length]));
+  shuffle([...(pool.length ? pool : CHAMPIONS)]).forEach(ch => reel.appendChild(cardEl(ch)));
 }
 
 /* ================= SPIN ================= */
+/* Carousel: each remaining champion appears exactly once per revolution.
+   The strip is rendered twice back to back only so the wrap-around is seamless. */
 function buildReel(winner){
   const reel = $('reel');
   reel.innerHTML = '';
-  const items = [];
-  let last = null;
-  for (let i = 0; i < REEL_LEN; i++) {
-    if (i === WIN_INDEX) { items.push(winner); last = winner; continue; }
-    let pick;
-    do { pick = pool[Math.floor(Math.random() * pool.length)]; }
-    while (pool.length > 1 && pick === last);
-    items.push(pick); last = pick;
-  }
-  items.forEach(ch => reel.appendChild(cardEl(ch)));
-  return reel.children[WIN_INDEX];
+  seq = shuffle([...pool]);
+  for (let copy = 0; copy < 2; copy++) seq.forEach(ch => reel.appendChild(cardEl(ch)));
+  return seq.indexOf(winner);
 }
 
 function startSpin(){
@@ -611,44 +694,52 @@ function startSpin(){
   if (soundOn) ac();
 
   const winner = pool[Math.floor(Math.random() * pool.length)];
-  const winEl = buildReel(winner);
+  const wIdx = buildReel(winner);
   const reel = $('reel');
   const wrap = $('reelWrap');
 
   const cw = cardWidth(), gap = 10, step = cw + gap;
+  const seqW = seq.length * step;
   const jitter = reduceMotion ? 0 : (Math.random() * 0.7 - 0.35) * cw;
-  const dist = WIN_INDEX * step + cw / 2 - wrap.clientWidth / 2 + jitter;
+  let base = wIdx * step + cw / 2 - wrap.clientWidth / 2 + jitter;
+  base = ((base % seqW) + seqW) % seqW;
 
-  reel.style.transition = 'none';
-  reel.style.transform = 'translateX(0)';
-  void reel.offsetWidth;
   const dur = reduceMotion ? 700 : SPIN_MS;
-  reel.style.transition = `transform ${dur}ms cubic-bezier(0.11, 0.82, 0.11, 1)`;
-  reel.style.transform = `translateX(${-dist}px)`;
+  const revs = reduceMotion ? 1 : REVOLUTIONS;
+  const total = revs * seqW + base;
+  const ease = t => 1 - Math.pow(1 - t, 5);
 
-  /* tikání podle karty pod ukazatelem */
-  let lastIdx = -1;
+  startRiser(dur);
+
+  let lastIdx = -1, finalXm = base;
   const t0 = performance.now();
-  function loop(now){
-    if (!spinning) return;
-    const m = new DOMMatrixReadOnly(getComputedStyle(reel).transform);
-    const x = -m.m41;
+  function frame(now){
+    const t = Math.min(1, (now - t0) / dur);
+    const x = total * ease(t);
+    const xm = x % seqW;
+    reel.style.transform = `translateX(${-xm}px)`;
     const idx = Math.floor((x + wrap.clientWidth / 2) / step);
     if (idx !== lastIdx) {
-      const speed = Math.max(0, 1 - (now - t0) / dur);
-      tickSound(speed);
-      const el = reel.children[idx];
+      tickSound(1 - t);
+      const domIdx = Math.floor((xm + wrap.clientWidth / 2) / step);
+      const el = reel.children[domIdx];
       if (el) {
         el.classList.add('pass');
         setTimeout(() => el.classList.remove('pass'), 180);
       }
       lastIdx = idx;
     }
-    if (now - t0 < dur) requestAnimationFrame(loop);
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      finalXm = xm;
+      const domIdx = Math.round((finalXm + wrap.clientWidth / 2 - cw / 2) / step);
+      const winEl = reel.children[domIdx] || reel.children[wIdx];
+      stopRiser();
+      land(winner, winEl);
+    }
   }
-  requestAnimationFrame(loop);
-
-  setTimeout(() => land(winner, winEl), dur + 60);
+  requestAnimationFrame(frame);
 }
 
 function land(winner, winEl){
@@ -730,7 +821,7 @@ function flyToSlot(winEl, ch, target, done){
   };
 }
 
-/* ================= FINÁLE / RESET ================= */
+/* ================= FINALE / RESET ================= */
 function showFinale(){
   const wrap = $('finaleDecks');
   wrap.innerHTML = '';
@@ -765,6 +856,7 @@ function resetAll(){
   decks = [[null,null],[null,null],[null,null]];
   spinIndex = 0;
   spinning = false;
+  stopRiser();
   $('finale').style.display = 'none';
   fillReelIdle();
   renderDecks();
