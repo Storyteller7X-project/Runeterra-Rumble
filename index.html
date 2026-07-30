@@ -513,194 +513,113 @@ function distortion(amount){
   return ws;
 }
 
-/* Six sound kits, one per spin. Tell me which number sounds best. */
-const SOUND_KITS = [
+/* ===== Spin sounds: heartbeat ticks + growing rumble (locked in) ===== */
+function tickSpin(sp){ const t = audioCtx.currentTime;
+  tone('sine', 72, 48, t, 0.09, 0.5);
+}
+function riserSpin(sec){ const t = audioCtx.currentTime;
+  const s = noise(); s.loop = true;
+  const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 130;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.22, t + sec * 0.95);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
+  s.connect(f).connect(g).connect(master);
+  s.start(t); s.stop(t + sec + 0.2);
+  riserNodes = [s];
+}
 
-/* 1: Orchestral hit - timpani, brass stab, cymbal */
-{ label: "Sound 1: Orchestral hit",
-  tick(sp){ const t = audioCtx.currentTime;
-    tone('sine', 900, 650, t, 0.05, 0.28);
-    noiseHit('bandpass', 2200, null, t, 0.03, 0.25, 8);
-  },
-  riser(sec){ const t = audioCtx.currentTime;
-    const s = noise(); s.loop = true;
-    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300;
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.12, t + sec * 0.9);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
-    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
-    lfo.frequency.setValueAtTime(7, t);
-    lfo.frequency.linearRampToValueAtTime(22, t + sec);
-    lg.gain.value = 0.06;
-    lfo.connect(lg).connect(g.gain);
-    s.connect(f).connect(g).connect(master);
-    s.start(t); s.stop(t + sec + 0.2); lfo.start(t); lfo.stop(t + sec + 0.2);
-    riserNodes = [s, lfo];
-  },
+/* ===== Six landing sounds, one per spin. Tell me which number sounds best. ===== */
+const LAND_KITS = [
+
+/* 1: Choir swell - a big warm chord blooming out of the rumble */
+{ label: "Land 1: Choir swell",
   land(){ const t = audioCtx.currentTime;
-    tone('sine', 115, 52, t, 0.9, 0.85);
-    [98, 146.83, 196].forEach(f => {
-      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 850; bp.Q.value = 1;
-      bp.connect(master);
-      tone('sawtooth', f, null, t + 0.01, 0.55, 0.16, 0.015, bp);
+    tone('sine', 65.4, null, t, 2.0, 0.3, 0.05);
+    [130.81, 196, 261.63, 329.63, 392].forEach(fr => {
+      const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+      lp.connect(master);
+      tone('triangle', fr, null, t, 2.3, 0.1, 0.13, lp);
+      tone('sine', fr * 1.005, null, t, 2.3, 0.06, 0.13, lp);
     });
-    noiseHit('highpass', 5200, null, t + 0.02, 1.1, 0.13);
+    noiseHit('bandpass', 800, null, t, 1.6, 0.07, 3);
   }
 },
 
-/* 2: Hextech chimes - glassy bells */
-{ label: "Sound 2: Hextech chimes",
-  tick(sp){ const t = audioCtx.currentTime;
-    tone('sine', 2400 + sp * 400, null, t, 0.04, 0.12);
-    tone('sine', 3600, null, t, 0.025, 0.05);
-  },
-  riser(sec){ const t = audioCtx.currentTime;
-    const s = noise(); s.loop = true;
-    const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 10;
-    f.frequency.setValueAtTime(900, t);
-    f.frequency.exponentialRampToValueAtTime(6000, t + sec);
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.06, t + sec * 0.9);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
-    s.connect(f).connect(g).connect(master);
-    s.start(t); s.stop(t + sec + 0.2);
-    riserNodes = [s];
-  },
+/* 2: Gong - deep temple gong with a long shimmering tail */
+{ label: "Land 2: Gong",
   land(){ const t = audioCtx.currentTime;
-    tone('sine', 65, null, t, 0.6, 0.35);
-    [523.25, 659.25, 783.99].forEach((f, i) => {
-      const d = i * 0.09;
-      tone('sine', f, null, t + d, 1.7, 0.22, 0.004);
-      tone('sine', f * 2.76, null, t + d, 0.9, 0.06, 0.004);
+    noiseHit('lowpass', 3000, 400, t, 0.05, 0.4);
+    tone('sine', 52, null, t, 3.2, 0.5, 0.01);
+    [104.7, 167, 233, 312.4, 419].forEach((fr, i) => {
+      tone('sine', fr, null, t + 0.01, 2.8 - i * 0.3, 0.14 - i * 0.02, 0.01);
     });
-    tone('sine', 1567.98, null, t + 0.27, 2.2, 0.1, 0.004);
-  }
-},
-
-/* 3: War braam - distorted low brass and huge drum */
-{ label: "Sound 3: War braam",
-  tick(sp){ const t = audioCtx.currentTime;
-    tone('sine', 165, 55, t, 0.09, 0.32);
-  },
-  riser(sec){ const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator(); o.type = 'sawtooth';
-    o.frequency.setValueAtTime(50, t);
-    o.frequency.linearRampToValueAtTime(74, t + sec);
-    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 220;
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.11, t + sec * 0.9);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
-    o.connect(f).connect(g).connect(master);
-    o.start(t); o.stop(t + sec + 0.2);
-    riserNodes = [o];
-  },
-  land(){ const t = audioCtx.currentTime;
-    tone('sine', 95, 36, t, 0.55, 1.0);
-    noiseHit('lowpass', 240, 70, t, 0.45, 0.5);
-    const dist = distortion(3.5);
-    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(750, t);
-    lp.frequency.exponentialRampToValueAtTime(140, t + 2.4);
-    const bus = audioCtx.createGain(); bus.gain.value = 0.4;
-    dist.connect(lp).connect(bus).connect(master);
-    [49, 98, 147].forEach(f => tone('sawtooth', f, null, t + 0.05, 2.4, 0.3, 0.14, dist));
-  }
-},
-
-/* 4: Jackpot - fanfare arpeggio and coin shimmer */
-{ label: "Sound 4: Jackpot",
-  tick(sp){ const t = audioCtx.currentTime;
-    noiseHit('highpass', 3200, null, t, 0.02, 0.32);
-  },
-  riser(sec){ riserNodes = []; },
-  land(){ const t = audioCtx.currentTime;
-    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
-      tone('triangle', f, null, t + i * 0.085, 0.24, 0.2, 0.003);
-    });
-    [523.25, 659.25, 783.99, 1046.5].forEach(f => {
-      tone('triangle', f, null, t + 0.46, 0.9, 0.11, 0.01);
-    });
-    for (let i = 0; i < 12; i++) {
-      const d = 0.1 + Math.random() * 0.8;
-      tone('sine', 2000 + Math.random() * 4000, null, t + d, 0.09, 0.05);
-    }
-    tone('sine', 98, null, t, 0.4, 0.3);
-  }
-},
-
-/* 5: Sci-fi charge - laser zap and pulse cannon */
-{ label: "Sound 5: Sci-fi charge",
-  tick(sp){ const t = audioCtx.currentTime;
-    tone('triangle', 1100, 1800, t, 0.035, 0.14);
-  },
-  riser(sec){ const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator(); o.type = 'sawtooth';
-    o.frequency.setValueAtTime(70, t);
-    o.frequency.exponentialRampToValueAtTime(950, t + sec);
-    const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
-    f.frequency.setValueAtTime(200, t);
-    f.frequency.exponentialRampToValueAtTime(2600, t + sec);
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.1, t + sec * 0.9);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
-    o.connect(f).connect(g).connect(master);
-    o.start(t); o.stop(t + sec + 0.2);
-    riserNodes = [o];
-  },
-  land(){ const t = audioCtx.currentTime;
-    const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 8;
-    bp.frequency.setValueAtTime(2400, t);
-    bp.frequency.exponentialRampToValueAtTime(140, t + 0.35);
-    bp.connect(master);
-    tone('sawtooth', 2100, 85, t, 0.35, 0.5, 0.002, bp);
-    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130;
-    lp.connect(master);
-    tone('square', 55, null, t + 0.03, 0.5, 0.65, 0.005, lp);
-    const hum = audioCtx.createOscillator(), hg = audioCtx.createGain();
-    hum.type = 'sine'; hum.frequency.value = 110;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = 623;
     const vib = audioCtx.createOscillator(), vg = audioCtx.createGain();
-    vib.frequency.value = 6; vg.gain.value = 6;
-    vib.connect(vg).connect(hum.frequency);
-    hg.gain.setValueAtTime(0.0001, t + 0.1);
-    hg.gain.exponentialRampToValueAtTime(0.09, t + 0.2);
-    hg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
-    hum.connect(hg).connect(master);
-    hum.start(t + 0.1); hum.stop(t + 1.4); vib.start(t + 0.1); vib.stop(t + 1.4);
+    vib.frequency.value = 4.5; vg.gain.value = 9;
+    vib.connect(vg).connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.6);
+    o.connect(g).connect(master);
+    o.start(t); o.stop(t + 2.7); vib.start(t); vib.stop(t + 2.7);
   }
 },
 
-/* 6: Detonation - heartbeat ticks into a huge explosion */
-{ label: "Sound 6: Detonation",
-  tick(sp){ const t = audioCtx.currentTime;
-    tone('sine', 72, 48, t, 0.09, 0.5);
-  },
-  riser(sec){ const t = audioCtx.currentTime;
-    const s = noise(); s.loop = true;
-    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 130;
-    const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.22, t + sec * 0.95);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + sec + 0.1);
-    s.connect(f).connect(g).connect(master);
-    s.start(t); s.stop(t + sec + 0.2);
-    riserNodes = [s];
-  },
+/* 3: Thunder strike - sharp crack, then rolling thunder */
+{ label: "Land 3: Thunder strike",
   land(){ const t = audioCtx.currentTime;
-    noiseHit('lowpass', 850, 55, t, 2.2, 0.9);
-    tone('sine', 46, null, t, 1.5, 0.7, 0.01);
-    noiseHit('bandpass', 1800, 400, t + 0.02, 0.25, 0.2, 2);
+    noiseHit('highpass', 2500, null, t, 0.08, 0.8);
+    noiseHit('lowpass', 500, 70, t + 0.03, 2.8, 0.7);
+    noiseHit('lowpass', 300, 60, t + 0.45, 2.0, 0.4);
+    tone('sine', 42, null, t + 0.03, 0.7, 0.5, 0.01);
+  }
+},
+
+/* 4: Blade clash - metallic ring like steel on steel */
+{ label: "Land 4: Blade clash",
+  land(){ const t = audioCtx.currentTime;
+    tone('sine', 150, 70, t, 0.16, 0.5);
+    [1244, 1866, 2489, 3320].forEach((fr, i) => {
+      tone('sine', fr, null, t, 0.9 - i * 0.12, 0.1, 0.002);
+    });
+    noiseHit('bandpass', 4000, 7500, t + 0.01, 0.5, 0.12, 4);
+    tone('sine', 660, null, t + 0.02, 1.3, 0.08, 0.002);
+  }
+},
+
+/* 5: Bass drop - hard 808 hit with a bounce */
+{ label: "Land 5: Bass drop",
+  land(){ const t = audioCtx.currentTime;
+    noiseHit('highpass', 1500, null, t, 0.03, 0.3);
+    const dist = distortion(2.5);
+    dist.connect(master);
+    tone('sine', 85, 38, t, 1.0, 0.95, 0.003, dist);
+    noiseHit('highpass', 6000, 300, t, 0.6, 0.12);
+    tone('sine', 60, 40, t + 0.45, 0.55, 0.4, 0.005, dist);
+  }
+},
+
+/* 6: Victory horns - two-note triumphant stinger with timpani */
+{ label: "Land 6: Victory horns",
+  land(){ const t = audioCtx.currentTime;
+    tone('sine', 98, 55, t, 0.55, 0.7);
+    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 950;
+    lp.connect(master);
+    [[196, 0, 0.3], [261.63, 0.27, 1.1]].forEach(([fr, d, dur]) => {
+      tone('sawtooth', fr, null, t + d, dur, 0.14, 0.02, lp);
+      tone('sawtooth', fr * 1.004, null, t + d, dur, 0.1, 0.02, lp);
+      tone('sawtooth', fr / 2, null, t + d, dur, 0.07, 0.02, lp);
+    });
+    noiseHit('highpass', 4500, null, t + 0.27, 1.0, 0.09);
   }
 }
 ];
 
-function kit(){ return SOUND_KITS[Math.min(spinIndex, 5)]; }
-function playTick(sp){ if (!soundOn) return; ac(); kit().tick(sp); }
-function playLand(){ if (!soundOn) return; ac(); kit().land(); }
-function startRiser(dur){ if (!soundOn) return; ac(); kit().riser(dur / 1000); }
+function playTick(sp){ if (!soundOn) return; ac(); tickSpin(sp); }
+function playLand(){ if (!soundOn) return; ac(); LAND_KITS[Math.min(spinIndex, 5)].land(); }
+function startRiser(dur){ if (!soundOn) return; ac(); riserSpin(dur / 1000); }
 function stopRiser(){ riserNodes.forEach(n => { try { n.stop(); } catch(e){} }); riserNodes = []; }
 
 $('soundBtn').addEventListener('click', () => {
@@ -786,7 +705,7 @@ function renderStage(){
     $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
     $('spinBtn').textContent = 'Spin';
     $('spinBtn').disabled = spinning;
-    $('soundKitLabel').textContent = SOUND_KITS[spinIndex].label;
+    $('soundKitLabel').textContent = LAND_KITS[spinIndex].label;
   } else {
     $('stageCount').textContent = 'Done';
     $('stageTarget').textContent = 'All decks are locked in';
