@@ -360,7 +360,6 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 
     <div class="spinRow">
       <button class="btnGold" id="spinBtn">Spin</button>
-      <div class="soundHint" id="soundKitLabel"></div>
     </div>
 
     <div class="decks" id="decks"></div>
@@ -529,96 +528,18 @@ function riserSpin(sec){ const t = audioCtx.currentTime;
   riserNodes = [s];
 }
 
-/* ===== Six landing sounds, one per spin. Tell me which number sounds best. ===== */
-const LAND_KITS = [
-
-/* 1: Choir swell - a big warm chord blooming out of the rumble */
-{ label: "Land 1: Choir swell",
-  land(){ const t = audioCtx.currentTime;
-    tone('sine', 65.4, null, t, 2.0, 0.3, 0.05);
-    [130.81, 196, 261.63, 329.63, 392].forEach(fr => {
-      const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
-      lp.connect(master);
-      tone('triangle', fr, null, t, 2.3, 0.1, 0.13, lp);
-      tone('sine', fr * 1.005, null, t, 2.3, 0.06, 0.13, lp);
-    });
-    noiseHit('bandpass', 800, null, t, 1.6, 0.07, 3);
-  }
-},
-
-/* 2: Gong - deep temple gong with a long shimmering tail */
-{ label: "Land 2: Gong",
-  land(){ const t = audioCtx.currentTime;
-    noiseHit('lowpass', 3000, 400, t, 0.05, 0.4);
-    tone('sine', 52, null, t, 3.2, 0.5, 0.01);
-    [104.7, 167, 233, 312.4, 419].forEach((fr, i) => {
-      tone('sine', fr, null, t + 0.01, 2.8 - i * 0.3, 0.14 - i * 0.02, 0.01);
-    });
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = 'sine'; o.frequency.value = 623;
-    const vib = audioCtx.createOscillator(), vg = audioCtx.createGain();
-    vib.frequency.value = 4.5; vg.gain.value = 9;
-    vib.connect(vg).connect(o.frequency);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.06, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 2.6);
-    o.connect(g).connect(master);
-    o.start(t); o.stop(t + 2.7); vib.start(t); vib.stop(t + 2.7);
-  }
-},
-
-/* 3: Thunder strike - sharp crack, then rolling thunder */
-{ label: "Land 3: Thunder strike",
-  land(){ const t = audioCtx.currentTime;
-    noiseHit('highpass', 2500, null, t, 0.08, 0.8);
-    noiseHit('lowpass', 500, 70, t + 0.03, 2.8, 0.7);
-    noiseHit('lowpass', 300, 60, t + 0.45, 2.0, 0.4);
-    tone('sine', 42, null, t + 0.03, 0.7, 0.5, 0.01);
-  }
-},
-
-/* 4: Blade clash - metallic ring like steel on steel */
-{ label: "Land 4: Blade clash",
-  land(){ const t = audioCtx.currentTime;
-    tone('sine', 150, 70, t, 0.16, 0.5);
-    [1244, 1866, 2489, 3320].forEach((fr, i) => {
-      tone('sine', fr, null, t, 0.9 - i * 0.12, 0.1, 0.002);
-    });
-    noiseHit('bandpass', 4000, 7500, t + 0.01, 0.5, 0.12, 4);
-    tone('sine', 660, null, t + 0.02, 1.3, 0.08, 0.002);
-  }
-},
-
-/* 5: Bass drop - hard 808 hit with a bounce */
-{ label: "Land 5: Bass drop",
-  land(){ const t = audioCtx.currentTime;
-    noiseHit('highpass', 1500, null, t, 0.03, 0.3);
-    const dist = distortion(2.5);
-    dist.connect(master);
-    tone('sine', 85, 38, t, 1.0, 0.95, 0.003, dist);
-    noiseHit('highpass', 6000, 300, t, 0.6, 0.12);
-    tone('sine', 60, 40, t + 0.45, 0.55, 0.4, 0.005, dist);
-  }
-},
-
-/* 6: Victory horns - two-note triumphant stinger with timpani */
-{ label: "Land 6: Victory horns",
-  land(){ const t = audioCtx.currentTime;
-    tone('sine', 98, 55, t, 0.55, 0.7);
-    const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 950;
-    lp.connect(master);
-    [[196, 0, 0.3], [261.63, 0.27, 1.1]].forEach(([fr, d, dur]) => {
-      tone('sawtooth', fr, null, t + d, dur, 0.14, 0.02, lp);
-      tone('sawtooth', fr * 1.004, null, t + d, dur, 0.1, 0.02, lp);
-      tone('sawtooth', fr / 2, null, t + d, dur, 0.07, 0.02, lp);
-    });
-    noiseHit('highpass', 4500, null, t + 0.27, 1.0, 0.09);
-  }
+/* ===== Landing sound: bass drop (locked in) ===== */
+function landSpin(){ const t = audioCtx.currentTime;
+  noiseHit('highpass', 1500, null, t, 0.03, 0.3);
+  const dist = distortion(2.5);
+  dist.connect(master);
+  tone('sine', 85, 38, t, 1.0, 0.95, 0.003, dist);
+  noiseHit('highpass', 6000, 300, t, 0.6, 0.12);
+  tone('sine', 60, 40, t + 0.45, 0.55, 0.4, 0.005, dist);
 }
-];
 
 function playTick(sp){ if (!soundOn) return; ac(); tickSpin(sp); }
-function playLand(){ if (!soundOn) return; ac(); LAND_KITS[Math.min(spinIndex, 5)].land(); }
+function playLand(){ if (!soundOn) return; ac(); landSpin(); }
 function startRiser(dur){ if (!soundOn) return; ac(); riserSpin(dur / 1000); }
 function stopRiser(){ riserNodes.forEach(n => { try { n.stop(); } catch(e){} }); riserNodes = []; }
 
@@ -705,12 +626,10 @@ function renderStage(){
     $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
     $('spinBtn').textContent = 'Spin';
     $('spinBtn').disabled = spinning;
-    $('soundKitLabel').textContent = LAND_KITS[spinIndex].label;
   } else {
     $('stageCount').textContent = 'Done';
     $('stageTarget').textContent = 'All decks are locked in';
     $('spinBtn').disabled = true;
-    $('soundKitLabel').textContent = '';
   }
 }
 
