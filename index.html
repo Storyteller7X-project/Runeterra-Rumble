@@ -755,7 +755,7 @@ function renderHistory(){
       if (!ch) return;
       const img = champImg(ch, 'hFallback');
       img.style.setProperty('--rc', ch.color);
-      d.insertBefore(img, names);
+      d.appendChild(img);
       const row = document.createElement('div');
       row.textContent = ch.name;
       names.appendChild(row);
