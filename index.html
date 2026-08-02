@@ -302,11 +302,52 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 .fCh img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:6px;border:1px solid var(--rc);box-shadow:0 0 16px color-mix(in srgb,var(--rc) 40%,transparent)}
 .fCh div{font-size:12px;margin-top:5px;color:var(--gold-bright)}
 
+.draftRow{
+  display:flex;gap:18px;align-items:stretch;justify-content:center;flex-wrap:wrap;width:min(1100px,100%);
+}
+.poolStats{
+  display:flex;flex-direction:column;justify-content:center;gap:12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 26px;
+}
+.poolStats div{display:flex;align-items:baseline;gap:10px}
+.poolStats span{
+  font-family:'Cinzel',serif;font-weight:900;font-size:26px;color:var(--gold-bright);min-width:52px;text-align:right;
+}
+.poolStats label{font-size:12px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.historyWrap{width:min(1100px,100%)}
+.historyWrap h3{
+  font-family:'Cinzel',serif;font-weight:700;font-size:14px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:12px;text-align:center;
+}
+.history{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.history:empty::after{
+  content:"No decks drafted yet";display:block;grid-column:1/-1;text-align:center;
+  color:#39415a;font-size:13px;padding:14px 0;
+}
+.hDeck{
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+.hDeck .hn{
+  font-family:'Cinzel',serif;font-weight:700;font-size:13px;color:var(--gold);min-width:26px;text-align:center;
+}
+.hDeck img,.hDeck .hFallback{
+  width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid color-mix(in srgb, var(--rc) 55%, #222a3a);
+}
+.hDeck .hFallback{
+  display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;
+  font-weight:900;color:var(--rc);background:#0c1220;
+}
+.hDeck .hNames{font-size:12.5px;color:var(--text);line-height:1.35;min-width:0}
+.hDeck .hNames div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 @media (prefers-reduced-motion: reduce){
   .reelWrap.shake,#announce .annText,.slot.target,.slot.justFilled,.card.winner{animation:none}
 }
 @media (max-width:820px){
-  .decks,.finaleDecks{grid-template-columns:1fr}
+  .finaleDecks{grid-template-columns:1fr}
+  .draftRow{flex-direction:column;align-items:center}
+  .poolStats{flex-direction:row;gap:22px;padding:12px 18px}
   .slots{justify-content:center}
   header{padding:12px 14px}
   header .logo{font-size:16px}
@@ -362,7 +403,25 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
       <button class="btnGold" id="spinBtn">Spin</button>
     </div>
 
-    <div class="decks" id="decks"></div>
+    <div class="draftRow">
+      <div class="deck" id="currentDeck">
+        <h3 id="currentDeckTitle">Deck 1</h3>
+        <div class="slots">
+          <div class="slot" data-slot="0"><div class="qm">?</div></div>
+          <div class="slot" data-slot="1"><div class="qm">?</div></div>
+        </div>
+      </div>
+      <div class="poolStats">
+        <div><span id="statRemaining">0</span><label>in the pool</label></div>
+        <div><span id="statUsed">0</span><label>drafted</label></div>
+        <div><span id="statDecks">0</span><label>decks</label></div>
+      </div>
+    </div>
+
+    <div class="historyWrap" id="historyWrap">
+      <h3>Drafted decks</h3>
+      <div class="history" id="history"></div>
+    </div>
   </main>
 </div>
 
@@ -370,9 +429,9 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 
 <div id="finale">
   <div class="finaleBox">
-    <h2>Draft complete</h2>
+    <h2 id="finaleTitle">Deck complete</h2>
     <div class="finaleDecks" id="finaleDecks"></div>
-    <button class="btnGold" id="againBtn">New draft</button>
+    <button class="btnGold" id="againBtn">Draft next deck</button>
   </div>
 </div>
 
@@ -381,53 +440,98 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 
 /* Accounts: add more players here */
 const USERS = {
-  "Storyteller": "xzIvOaLvun49"
+  "Storyteller": "xzIvOaLvun49",
+  "WAD100": "lDrp8UssCzsR"
 };
 
-/* Pool of 20 champions. id = Data Dragon file name (no spaces or apostrophes) */
-const CHAMPIONS = [
-  {name:"Garen",        id:"Garen",        region:"Demacia",         color:"#f8e7b0"},
-  {name:"Lux",          id:"Lux",          region:"Demacia",         color:"#f8e7b0"},
-  {name:"Fiora",        id:"Fiora",        region:"Demacia",         color:"#f8e7b0"},
-  {name:"Darius",       id:"Darius",       region:"Noxus",           color:"#e0393f"},
-  {name:"Katarina",     id:"Katarina",     region:"Noxus",           color:"#e0393f"},
-  {name:"Swain",        id:"Swain",        region:"Noxus",           color:"#e0393f"},
-  {name:"Yasuo",        id:"Yasuo",        region:"Ionia",           color:"#e06fd8"},
-  {name:"Ahri",         id:"Ahri",         region:"Ionia",           color:"#e06fd8"},
-  {name:"Zed",          id:"Zed",          region:"Ionia",           color:"#e06fd8"},
-  {name:"Ezreal",       id:"Ezreal",       region:"Piltover & Zaun", color:"#4fd4c7"},
-  {name:"Jinx",         id:"Jinx",         region:"Piltover & Zaun", color:"#4fd4c7"},
-  {name:"Heimerdinger", id:"Heimerdinger", region:"Piltover & Zaun", color:"#4fd4c7"},
-  {name:"Ashe",         id:"Ashe",         region:"Freljord",        color:"#5bb8ff"},
-  {name:"Braum",        id:"Braum",        region:"Freljord",        color:"#5bb8ff"},
-  {name:"Thresh",       id:"Thresh",       region:"Shadow Isles",    color:"#46e0a0"},
-  {name:"Elise",        id:"Elise",        region:"Shadow Isles",    color:"#46e0a0"},
-  {name:"Miss Fortune", id:"MissFortune",  region:"Bilgewater",      color:"#ff8a3c"},
-  {name:"Gangplank",    id:"Gangplank",    region:"Bilgewater",      color:"#ff8a3c"},
-  {name:"Leona",        id:"Leona",        region:"Targon",          color:"#a08cff"},
-  {name:"Azir",         id:"Azir",         region:"Shurima",         color:"#e9a83b"}
+/* Regions */
+const REGIONS = {
+  DE:{label:"Demacia",         color:"#f8e7b0"},
+  FR:{label:"Freljord",        color:"#5bb8ff"},
+  IO:{label:"Ionia",           color:"#e06fd8"},
+  NX:{label:"Noxus",           color:"#e0393f"},
+  PZ:{label:"Piltover & Zaun", color:"#4fd4c7"},
+  SI:{label:"Shadow Isles",    color:"#46e0a0"},
+  BW:{label:"Bilgewater",      color:"#ff8a3c"},
+  MT:{label:"Targon",          color:"#a08cff"},
+  SH:{label:"Shurima",         color:"#e9a83b"},
+  BC:{label:"Bandle City",     color:"#b8e05a"},
+  RU:{label:"Runeterra",       color:"#c0c8d8"}
+};
+
+/* Every collectible PVP champion in LoR (117), verified against Data Dragon card data.
+   Run verifyPool() in the browser console to re-check the pool against Data Dragon live.
+   [name, Data Dragon id, region, optional image override] */
+const CHAMPION_DATA = [
+  ["Garen","Garen","DE"],["Lucian","Lucian","DE"],["Lux","Lux","DE"],["Fiora","Fiora","DE"],
+  ["Quinn","Quinn","DE"],["Shyvana","Shyvana","DE"],["Jarvan IV","JarvanIV","DE"],["Galio","Galio","DE"],
+  ["Vayne","Vayne","DE"],
+  ["Lux: Illuminated","Lux","DE","https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Lux_7.jpg"],
+  ["Braum","Braum","FR"],["Anivia","Anivia","FR"],["Ashe","Ashe","FR"],["Tryndamere","Tryndamere","FR"],
+  ["Sejuani","Sejuani","FR"],["Trundle","Trundle","FR"],["Lissandra","Lissandra","FR"],["Udyr","Udyr","FR"],
+  ["Ornn","Ornn","FR"],["Volibear","Volibear","FR"],
+  ["Zed","Zed","IO"],["Yasuo","Yasuo","IO"],["Shen","Shen","IO"],["Karma","Karma","IO"],
+  ["Lee Sin","LeeSin","IO"],["Irelia","Irelia","IO"],["Ahri","Ahri","IO"],["Master Yi","MasterYi","IO"],
+  ["Sett","Sett","IO"],["Lillia","Lillia","IO"],
+  ["Vladimir","Vladimir","NX"],["Draven","Draven","NX"],["Darius","Darius","NX"],["Katarina","Katarina","NX"],
+  ["Swain","Swain","NX"],["Riven","Riven","NX"],["LeBlanc","Leblanc","NX"],["Sion","Sion","NX"],
+  ["Annie","Annie","NX"],["Samira","Samira","NX"],
+  ["Ezreal","Ezreal","PZ"],["Jinx","Jinx","PZ"],["Heimerdinger","Heimerdinger","PZ"],["Vi","Vi","PZ"],
+  ["Viktor","Viktor","PZ"],["Ekko","Ekko","PZ"],["Caitlyn","Caitlyn","PZ"],["Jayce","Jayce","PZ"],
+  ["Seraphine","Seraphine","PZ"],["Janna","Janna","PZ"],
+  ["Kalista","Kalista","SI"],["Hecarim","Hecarim","SI"],["Thresh","Thresh","SI"],["Elise","Elise","SI"],
+  ["Maokai","Maokai","SI"],["Nocturne","Nocturne","SI"],["Kindred","Kindred","SI"],["Viego","Viego","SI"],
+  ["Senna","Senna","SI"],["Gwen","Gwen","SI"],["Mordekaiser","Mordekaiser","SI"],
+  ["Miss Fortune","MissFortune","BW"],["Twisted Fate","TwistedFate","BW"],["Gangplank","Gangplank","BW"],
+  ["Fizz","Fizz","BW"],["Nautilus","Nautilus","BW"],["Tahm Kench","TahmKench","BW"],["Pyke","Pyke","BW"],
+  ["Nami","Nami","BW"],["Illaoi","Illaoi","BW"],
+  ["Jack","","BW","https://dd.b.pvp.net/latest/set7/en_us/img/cards/07BW002-full.png"],
+  ["Nilah","Nilah","BW"],
+  ["Zoe","Zoe","MT"],["Leona","Leona","MT"],["Soraka","Soraka","MT"],["Diana","Diana","MT"],
+  ["Taric","Taric","MT"],["Aurelion Sol","AurelionSol","MT"],["Aphelios","Aphelios","MT"],
+  ["Malphite","Malphite","MT"],["Pantheon","Pantheon","MT"],["Kayle","Kayle","MT"],["Morgana","Morgana","MT"],
+  ["Azir","Azir","SH"],["Rek'Sai","RekSai","SH"],["Sivir","Sivir","SH"],["Zilean","Zilean","SH"],
+  ["Nasus","Nasus","SH"],["Renekton","Renekton","SH"],["Taliyah","Taliyah","SH"],["Akshan","Akshan","SH"],
+  ["Xerath","Xerath","SH"],["Kai'Sa","Kaisa","SH"],["Nidalee","Nidalee","SH"],
+  ["Teemo","Teemo","BC"],["Lulu","Lulu","BC"],["Yuumi","Yuumi","BC"],["Poppy","Poppy","BC"],
+  ["Kennen","Kennen","BC"],["Rumble","Rumble","BC"],["Veigar","Veigar","BC"],["Tristana","Tristana","BC"],
+  ["Gnar","Gnar","BC"],["Ziggs","Ziggs","BC"],["Vex","Vex","BC"],
+  ["Norra","","BC","https://dd.b.pvp.net/latest/set6/en_us/img/cards/06BC015-full.png"],
+  ["Bard","Bard","RU"],["Jhin","Jhin","RU"],["Kayn","Kayn","RU"],["Ryze","Ryze","RU"],
+  ["Jax","Jax","RU"],["Varus","Varus","RU"],["Evelynn","Evelynn","RU"],["Aatrox","Aatrox","RU"],
+  ["Neeko","Neeko","RU"],
+  ["The Poro King","","RU","https://dd.b.pvp.net/latest/set7/en_us/img/cards/07RU015-full.png"],
+  ["Elder Dragon","","RU","https://dd.b.pvp.net/latest/set8/en_us/img/cards/08RU014-full.png"]
 ];
 
-const imgUrl = c => `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${c.id}_0.jpg`;
-
-/* Spin order: deck (0-2), slot (0-1) */
-const SPIN_ORDER = [
-  {deck:0, slot:0, label:"Deck 1: first champion"},
-  {deck:0, slot:1, label:"Deck 1: second champion"},
-  {deck:1, slot:0, label:"Deck 2: first champion"},
-  {deck:1, slot:1, label:"Deck 2: second champion"},
-  {deck:2, slot:0, label:"Deck 3: first champion"},
-  {deck:2, slot:1, label:"Deck 3: second champion"}
-];
+const CHAMPIONS = CHAMPION_DATA.map(([name, id, region, img]) => ({
+  name, id, region: REGIONS[region].label, color: REGIONS[region].color,
+  img: img || `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${id}_0.jpg`
+}));
+const byName = Object.fromEntries(CHAMPIONS.map(c => [c.name, c]));
 
 const SPIN_MS = 6800;      /* spin duration */
 const REVOLUTIONS = 5;     /* full loops of the carousel before landing */
 
+/* ================= ACCOUNT STORAGE ================= */
+/* Saved per account in this browser. Swap for Firebase later for shared accounts. */
+const memStore = {};
+function loadState(user){
+  try {
+    const raw = localStorage.getItem('rr_' + user);
+    if (raw) return JSON.parse(raw);
+  } catch(e){}
+  return memStore['rr_' + user] || { used: [], decks: [], current: [] };
+}
+function saveState(){
+  const data = JSON.stringify(state);
+  try { localStorage.setItem('rr_' + currentUser, data); } catch(e){}
+  memStore['rr_' + currentUser] = JSON.parse(data);
+}
+
 /* ================= STATE ================= */
 let currentUser = null;
-let pool = [];
-let decks = [[null,null],[null,null],[null,null]];
-let spinIndex = 0;
+let state = { used: [], decks: [], current: [] };
 let spinning = false;
 let soundOn = true;
 let seq = [];              /* current carousel order, each champion exactly once */
@@ -435,6 +539,10 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 
 const $ = id => document.getElementById(id);
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function poolNow(){
+  const taken = new Set([...state.used, ...state.current]);
+  return CHAMPIONS.filter(c => !taken.has(c.name));
+}
 
 /* ================= LOGIN ================= */
 $('loginForm').addEventListener('submit', e => {
@@ -447,7 +555,11 @@ $('loginForm').addEventListener('submit', e => {
     $('loginScreen').style.display = 'none';
     $('app').style.display = 'flex';
     $('userLabel').textContent = u;
-    resetAll();
+    state = loadState(u);
+    spinning = false;
+    $('finale').style.display = 'none';
+    fillReelIdle();
+    renderAll();
   } else {
     $('loginErr').textContent = 'Wrong username or password.';
   }
@@ -555,116 +667,143 @@ window.addEventListener('resize', () => {
   document.documentElement.style.setProperty('--cw', cardWidth() + 'px');
 });
 
+function champImg(ch, cls){
+  const img = document.createElement('img');
+  img.src = ch.img; img.alt = ch.name; img.draggable = false;
+  img.onerror = () => {
+    const f = document.createElement('div');
+    f.className = cls;
+    f.textContent = ch.name[0];
+    img.replaceWith(f);
+  };
+  return img;
+}
+
 function cardEl(ch){
   const d = document.createElement('div');
   d.className = 'card';
   d.style.setProperty('--rc', ch.color);
-  const img = document.createElement('img');
-  img.src = imgUrl(ch);
-  img.alt = ch.name;
-  img.draggable = false;
-  img.onerror = () => {
-    const f = document.createElement('div');
-    f.className = 'imgFallback';
-    f.textContent = ch.name[0];
-    img.replaceWith(f);
-  };
   const n = document.createElement('div');
   n.className = 'cname';
   n.textContent = ch.name;
-  d.append(img, n);
+  d.append(champImg(ch, 'imgFallback'), n);
   return d;
 }
 
-function renderDecks(){
-  const wrap = $('decks');
-  wrap.innerHTML = '';
-  const target = spinIndex < 6 ? SPIN_ORDER[spinIndex] : null;
-  decks.forEach((deck, di) => {
-    const dEl = document.createElement('div');
-    dEl.className = 'deck';
-    const h = document.createElement('h3');
-    h.textContent = 'Deck ' + (di + 1);
-    dEl.appendChild(h);
-    const slots = document.createElement('div');
-    slots.className = 'slots';
-    deck.forEach((ch, si) => {
-      const s = document.createElement('div');
-      s.className = 'slot';
-      s.dataset.deck = di; s.dataset.slot = si;
-      if (ch) {
-        s.classList.add('filled');
-        s.style.setProperty('--rc', ch.color);
-        const img = document.createElement('img');
-        img.src = imgUrl(ch); img.alt = ch.name; img.draggable = false;
-        img.onerror = () => {
-          const f = document.createElement('div');
-          f.className = 'imgFallback';
-          f.style.flex = '1';
-          f.textContent = ch.name[0];
-          img.replaceWith(f);
-        };
-        const n = document.createElement('div');
-        n.className = 'sname'; n.textContent = ch.name;
-        s.append(img, n);
-      } else {
-        const q = document.createElement('div');
-        q.className = 'qm'; q.textContent = '?';
-        s.appendChild(q);
-        if (target && target.deck === di && target.slot === si) s.classList.add('target');
-      }
-      slots.appendChild(s);
-    });
-    dEl.appendChild(slots);
-    wrap.appendChild(dEl);
+function renderCurrentDeck(){
+  $('currentDeckTitle').textContent = 'Deck ' + (state.decks.length + 1);
+  const slots = document.querySelectorAll('#currentDeck .slot');
+  slots.forEach((s, si) => {
+    s.className = 'slot';
+    s.style.removeProperty('--rc');
+    s.innerHTML = '';
+    const name = state.current[si];
+    if (name) {
+      const ch = byName[name];
+      s.classList.add('filled');
+      s.style.setProperty('--rc', ch.color);
+      const n = document.createElement('div');
+      n.className = 'sname'; n.textContent = ch.name;
+      s.append(champImg(ch, 'imgFallback'), n);
+    } else {
+      const q = document.createElement('div');
+      q.className = 'qm'; q.textContent = '?';
+      s.appendChild(q);
+      if (si === state.current.length) s.classList.add('target');
+    }
   });
 }
 
+function renderHistory(){
+  const wrap = $('history');
+  wrap.innerHTML = '';
+  state.decks.forEach((pair, i) => {
+    const d = document.createElement('div');
+    d.className = 'hDeck';
+    const num = document.createElement('div');
+    num.className = 'hn'; num.textContent = i + 1;
+    d.appendChild(num);
+    const names = document.createElement('div');
+    names.className = 'hNames';
+    pair.forEach(name => {
+      const ch = byName[name];
+      if (!ch) return;
+      const img = champImg(ch, 'hFallback');
+      img.style.setProperty('--rc', ch.color);
+      d.insertBefore(img, names);
+      const row = document.createElement('div');
+      row.textContent = ch.name;
+      names.appendChild(row);
+    });
+    d.appendChild(names);
+    wrap.appendChild(d);
+  });
+}
+
+function renderStats(){
+  $('statRemaining').textContent = poolNow().length;
+  $('statUsed').textContent = state.used.length + state.current.length;
+  $('statDecks').textContent = state.decks.length;
+}
+
 function renderStage(){
-  if (spinIndex < 6) {
-    $('stageCount').textContent = 'Spin ' + (spinIndex + 1) + ' / 6';
-    $('stageTarget').textContent = SPIN_ORDER[spinIndex].label;
-    $('spinBtn').textContent = 'Spin';
-    $('spinBtn').disabled = spinning;
-  } else {
-    $('stageCount').textContent = 'Done';
-    $('stageTarget').textContent = 'All decks are locked in';
+  const remaining = poolNow().length;
+  if (remaining === 0) {
+    $('stageCount').textContent = 'Pool is empty';
+    $('stageTarget').textContent = 'Every champion has been drafted';
     $('spinBtn').disabled = true;
+    return;
   }
+  const deckNo = state.decks.length + 1;
+  $('stageCount').textContent = 'Deck ' + deckNo + ' \u00b7 Spin ' + (state.current.length + 1) + ' / 2';
+  $('stageTarget').textContent = state.current.length === 0 ? 'First champion' : 'Second champion';
+  $('spinBtn').textContent = 'Spin';
+  $('spinBtn').disabled = spinning;
+}
+
+function renderAll(){
+  renderCurrentDeck();
+  renderHistory();
+  renderStats();
+  renderStage();
 }
 
 function fillReelIdle(){
   const reel = $('reel');
   reel.style.transform = 'translateX(0)';
   reel.innerHTML = '';
-  shuffle([...(pool.length ? pool : CHAMPIONS)]).forEach(ch => reel.appendChild(cardEl(ch)));
+  const src = poolNow();
+  shuffle([...(src.length ? src : CHAMPIONS)]).forEach(ch => reel.appendChild(cardEl(ch)));
 }
 
 /* ================= SPIN ================= */
 /* Carousel: each remaining champion appears exactly once per revolution.
-   The strip is rendered twice back to back only so the wrap-around is seamless. */
-function buildReel(winner){
+   The strip is repeated back to back only so the wrap-around is seamless. */
+function buildReel(winner, wrapWidth, step){
   const reel = $('reel');
   reel.innerHTML = '';
-  seq = shuffle([...pool]);
-  for (let copy = 0; copy < 2; copy++) seq.forEach(ch => reel.appendChild(cardEl(ch)));
+  seq = shuffle([...poolNow()]);
+  const seqW = seq.length * step;
+  const copies = Math.max(2, Math.ceil(wrapWidth / seqW) + 1);
+  for (let copy = 0; copy < copies; copy++) seq.forEach(ch => reel.appendChild(cardEl(ch)));
   return seq.indexOf(winner);
 }
 
 function startSpin(){
-  if (spinning || spinIndex >= 6 || pool.length === 0) return;
+  if (spinning || poolNow().length === 0) return;
   spinning = true;
   renderStage();
   if (soundOn) ac();
 
+  const pool = poolNow();
   const winner = pool[Math.floor(Math.random() * pool.length)];
-  const wIdx = buildReel(winner);
   const reel = $('reel');
   const wrap = $('reelWrap');
-
   const cw = cardWidth(), gap = 10, step = cw + gap;
+
+  const wIdx = buildReel(winner, wrap.clientWidth, step);
   const seqW = seq.length * step;
-  const jitter = reduceMotion ? 0 : (Math.random() * 0.7 - 0.35) * cw;
+  const jitter = reduceMotion ? 0 : (Math.random() * 0.7 - 0.35) * Math.min(cw, seqW / 3);
   let base = wIdx * step + cw / 2 - wrap.clientWidth / 2 + jitter;
   base = ((base % seqW) + seqW) % seqW;
 
@@ -675,7 +814,7 @@ function startSpin(){
 
   startRiser(dur);
 
-  let lastIdx = -1, finalXm = base;
+  let lastIdx = -1;
   const t0 = performance.now();
   function frame(now){
     const t = Math.min(1, (now - t0) / dur);
@@ -696,8 +835,7 @@ function startSpin(){
     if (t < 1) {
       requestAnimationFrame(frame);
     } else {
-      finalXm = xm;
-      const domIdx = Math.round((finalXm + wrap.clientWidth / 2 - cw / 2) / step);
+      const domIdx = Math.round((xm + wrap.clientWidth / 2 - cw / 2) / step);
       const winEl = reel.children[domIdx] || reel.children[wIdx];
       stopRiser();
       land(winner, winEl);
@@ -717,20 +855,27 @@ function land(winner, winEl){
   }
   announce(winner);
 
-  const target = SPIN_ORDER[spinIndex];
-  pool = pool.filter(c => c !== winner);
+  const slotIdx = state.current.length;
 
   const finish = () => {
-    decks[target.deck][target.slot] = winner;
-    spinIndex++;
-    renderDecks();
-    renderStage();
-    const s = document.querySelector(`.slot[data-deck="${target.deck}"][data-slot="${target.slot}"]`);
-    if (s) s.classList.add('justFilled');
-    if (spinIndex >= 6) setTimeout(showFinale, 1100);
+    state.current.push(winner.name);
+    const deckDone = state.current.length === 2 || poolNow().length === 0;
+    if (deckDone) {
+      state.decks.push([...state.current]);
+      state.used.push(...state.current);
+      state.current = [];
+    }
+    saveState();
+    renderAll();
+    if (deckDone) {
+      setTimeout(() => showDeckDone(state.decks[state.decks.length - 1]), 900);
+    } else {
+      const s = document.querySelector(`#currentDeck .slot[data-slot="${slotIdx}"]`);
+      if (s) s.classList.add('justFilled');
+    }
   };
   if (reduceMotion) { finish(); }
-  else { flyToSlot(winEl, winner, target, finish); }
+  else { flyToSlot(winEl, winner, slotIdx, finish); }
 }
 
 function announce(ch){
@@ -762,9 +907,10 @@ function burst(el, color){
   }
 }
 
-function flyToSlot(winEl, ch, target, done){
-  const from = winEl.querySelector('img, .imgFallback').getBoundingClientRect();
-  const slotEl = document.querySelector(`.slot[data-deck="${target.deck}"][data-slot="${target.slot}"]`);
+function flyToSlot(winEl, ch, slotIdx, done){
+  const src = winEl.querySelector('img, .imgFallback');
+  const from = (src || winEl).getBoundingClientRect();
+  const slotEl = document.querySelector(`#currentDeck .slot[data-slot="${slotIdx}"]`);
   const to = slotEl ? slotEl.getBoundingClientRect() : from;
   const fly = document.createElement('div');
   fly.className = 'flyCard';
@@ -772,7 +918,7 @@ function flyToSlot(winEl, ch, target, done){
   fly.style.left = from.left + 'px'; fly.style.top = from.top + 'px';
   fly.style.width = from.width + 'px'; fly.style.height = from.height + 'px';
   const img = document.createElement('img');
-  img.src = imgUrl(ch);
+  img.src = ch.img;
   img.onerror = () => { fly.style.background = ch.color; img.remove(); };
   fly.appendChild(img);
   document.body.appendChild(fly);
@@ -785,51 +931,72 @@ function flyToSlot(winEl, ch, target, done){
   };
 }
 
-/* ================= FINALE / RESET ================= */
-function showFinale(){
+/* ================= DECK DONE / RESET ================= */
+function showDeckDone(pair){
+  $('finaleTitle').textContent = 'Deck ' + state.decks.length + ' complete';
   const wrap = $('finaleDecks');
   wrap.innerHTML = '';
-  decks.forEach((deck, di) => {
-    const d = document.createElement('div');
-    d.className = 'fDeck';
-    const h = document.createElement('h3');
-    h.textContent = 'Deck ' + (di + 1);
-    d.appendChild(h);
-    const pair = document.createElement('div');
-    pair.className = 'fPair';
-    deck.forEach(ch => {
-      const c = document.createElement('div');
-      c.className = 'fCh';
-      c.style.setProperty('--rc', ch.color);
-      const img = document.createElement('img');
-      img.src = imgUrl(ch); img.alt = ch.name;
-      img.onerror = () => { img.style.background = ch.color; };
-      const n = document.createElement('div');
-      n.textContent = ch.name;
-      c.append(img, n);
-      pair.appendChild(c);
-    });
-    d.appendChild(pair);
-    wrap.appendChild(d);
+  const d = document.createElement('div');
+  d.className = 'fDeck';
+  d.style.gridColumn = '1 / -1';
+  const p = document.createElement('div');
+  p.className = 'fPair';
+  pair.forEach(name => {
+    const ch = byName[name];
+    const c = document.createElement('div');
+    c.className = 'fCh';
+    c.style.setProperty('--rc', ch.color);
+    const n = document.createElement('div');
+    n.textContent = ch.name;
+    c.append(champImg(ch, 'hFallback'), n);
+    p.appendChild(c);
   });
+  d.appendChild(p);
+  wrap.appendChild(d);
+  $('againBtn').textContent = poolNow().length === 0 ? 'Close' : 'Draft next deck';
   $('finale').style.display = 'flex';
 }
 
-function resetAll(){
-  pool = [...CHAMPIONS];
-  decks = [[null,null],[null,null],[null,null]];
-  spinIndex = 0;
-  spinning = false;
-  stopRiser();
+$('againBtn').addEventListener('click', () => {
   $('finale').style.display = 'none';
   fillReelIdle();
-  renderDecks();
-  renderStage();
+  renderAll();
+});
+
+$('resetBtn').addEventListener('click', () => {
+  if (spinning) return;
+  if (!confirm('Reset this account? All drafted decks are deleted and every champion returns to the pool.')) return;
+  state = { used: [], decks: [], current: [] };
+  saveState();
+  $('finale').style.display = 'none';
+  fillReelIdle();
+  renderAll();
+});
+
+/* Dev check: compares the pool against Data Dragon (all collectible Champion cards).
+   Open the browser console on the deployed site and run: verifyPool() */
+async function verifyPool(){
+  const sets = ['set1','set2','set3','set4','set5','set6','set6cde','set7','set7b','set8','set9'];
+  const found = new Set();
+  for (const st of sets) {
+    try {
+      const res = await fetch(`https://dd.b.pvp.net/latest/${st}/en_us/data/${st}-en_us.json`);
+      if (!res.ok) { console.warn(st, 'HTTP', res.status); continue; }
+      const cards = await res.json();
+      cards.forEach(c => { if (c.rarityRef === 'Champion' && c.collectible) found.add(c.name); });
+      console.log(st, 'ok');
+    } catch(err) { console.warn(st, 'failed', err); }
+  }
+  const mine = new Set(CHAMPIONS.map(c => c.name));
+  const missing = [...found].filter(n => !mine.has(n)).sort();
+  const extra = [...mine].filter(n => !found.has(n)).sort();
+  console.log(`Data Dragon collectible champions: ${found.size} | in pool: ${mine.size}`);
+  console.log('Missing from pool:', missing.length ? missing : 'none');
+  console.log('In pool but not in Data Dragon:', extra.length ? extra : 'none');
+  return { missing, extra };
 }
 
 $('spinBtn').addEventListener('click', startSpin);
-$('resetBtn').addEventListener('click', () => { if (!spinning) resetAll(); });
-$('againBtn').addEventListener('click', resetAll);
 </script>
 
 </body>
