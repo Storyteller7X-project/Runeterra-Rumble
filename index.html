@@ -466,7 +466,10 @@ const CHAMPION_DATA = [
   ["Garen","Garen","DE"],["Lucian","Lucian","DE"],["Lux","Lux","DE"],["Fiora","Fiora","DE"],
   ["Quinn","Quinn","DE"],["Shyvana","Shyvana","DE"],["Jarvan IV","JarvanIV","DE"],["Galio","Galio","DE"],
   ["Vayne","Vayne","DE"],
-  ["Lux: Illuminated","Lux","DE","https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Lux_7.jpg"],
+  ["Lux: Illuminated","Lux","DE",[
+    "https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Lux_7.jpg",
+    "https://dd.b.pvp.net/latest/set9/en_us/img/cards/09DE034-full.png",
+    "https://dd.b.pvp.net/latest/set9/en_us/img/cards/09DE034.png"]],
   ["Braum","Braum","FR"],["Anivia","Anivia","FR"],["Ashe","Ashe","FR"],["Tryndamere","Tryndamere","FR"],
   ["Sejuani","Sejuani","FR"],["Trundle","Trundle","FR"],["Lissandra","Lissandra","FR"],["Udyr","Udyr","FR"],
   ["Ornn","Ornn","FR"],["Volibear","Volibear","FR"],
@@ -485,7 +488,11 @@ const CHAMPION_DATA = [
   ["Miss Fortune","MissFortune","BW"],["Twisted Fate","TwistedFate","BW"],["Gangplank","Gangplank","BW"],
   ["Fizz","Fizz","BW"],["Nautilus","Nautilus","BW"],["Tahm Kench","TahmKench","BW"],["Pyke","Pyke","BW"],
   ["Nami","Nami","BW"],["Illaoi","Illaoi","BW"],
-  ["Jack","","BW","https://dd.b.pvp.net/latest/set7/en_us/img/cards/07BW002-full.png"],
+  ["Jack","","BW",[
+    "https://dd.b.pvp.net/latest/set7/en_us/img/cards/07BW002-full.png",
+    "https://dd.b.pvp.net/latest/set7b/en_us/img/cards/07BW002-full.png",
+    "https://dd.b.pvp.net/latest/set7/en_us/img/cards/07BW002.png",
+    "https://dd.b.pvp.net/latest/set7b/en_us/img/cards/07BW002.png"]],
   ["Nilah","Nilah","BW"],
   ["Zoe","Zoe","MT"],["Leona","Leona","MT"],["Soraka","Soraka","MT"],["Diana","Diana","MT"],
   ["Taric","Taric","MT"],["Aurelion Sol","AurelionSol","MT"],["Aphelios","Aphelios","MT"],
@@ -496,17 +503,25 @@ const CHAMPION_DATA = [
   ["Teemo","Teemo","BC"],["Lulu","Lulu","BC"],["Yuumi","Yuumi","BC"],["Poppy","Poppy","BC"],
   ["Kennen","Kennen","BC"],["Rumble","Rumble","BC"],["Veigar","Veigar","BC"],["Tristana","Tristana","BC"],
   ["Gnar","Gnar","BC"],["Ziggs","Ziggs","BC"],["Vex","Vex","BC"],
-  ["Norra","","BC","https://dd.b.pvp.net/latest/set6/en_us/img/cards/06BC015-full.png"],
+  ["Norra","","BC",[
+    "https://dd.b.pvp.net/latest/set6cde/en_us/img/cards/06BC015-full.png",
+    "https://dd.b.pvp.net/latest/set6/en_us/img/cards/06BC015-full.png",
+    "https://dd.b.pvp.net/latest/set6cde/en_us/img/cards/06BC015.png",
+    "https://dd.b.pvp.net/latest/set6/en_us/img/cards/06BC015.png"]],
   ["Bard","Bard","RU"],["Jhin","Jhin","RU"],["Kayn","Kayn","RU"],["Ryze","Ryze","RU"],
   ["Jax","Jax","RU"],["Varus","Varus","RU"],["Evelynn","Evelynn","RU"],["Aatrox","Aatrox","RU"],
   ["Neeko","Neeko","RU"],
-  ["The Poro King","","RU","https://dd.b.pvp.net/latest/set7/en_us/img/cards/07RU015-full.png"],
+  ["The Poro King","","RU",[
+    "https://dd.b.pvp.net/latest/set7b/en_us/img/cards/07RU015-full.png",
+    "https://dd.b.pvp.net/latest/set7/en_us/img/cards/07RU015-full.png",
+    "https://dd.b.pvp.net/latest/set7b/en_us/img/cards/07RU015.png",
+    "https://dd.b.pvp.net/latest/set7/en_us/img/cards/07RU015.png"]],
   ["Elder Dragon","","RU","https://dd.b.pvp.net/latest/set8/en_us/img/cards/08RU014-full.png"]
 ];
 
 const CHAMPIONS = CHAMPION_DATA.map(([name, id, region, img]) => ({
   name, id, region: REGIONS[region].label, color: REGIONS[region].color,
-  img: img || `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${id}_0.jpg`
+  imgs: img ? [].concat(img) : [`https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${id}_0.jpg`]
 }));
 const byName = Object.fromEntries(CHAMPIONS.map(c => [c.name, c]));
 
@@ -535,6 +550,7 @@ let state = { used: [], decks: [], current: [] };
 let spinning = false;
 let soundOn = true;
 let seq = [];              /* current carousel order, each champion exactly once */
+let pendingDeck = null;    /* finished deck kept on screen until Draft next deck */
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const $ = id => document.getElementById(id);
@@ -556,6 +572,7 @@ $('loginForm').addEventListener('submit', e => {
     $('app').style.display = 'flex';
     $('userLabel').textContent = u;
     state = loadState(u);
+    pendingDeck = null;
     spinning = false;
     $('finale').style.display = 'none';
     fillReelIdle();
@@ -667,10 +684,16 @@ window.addEventListener('resize', () => {
   document.documentElement.style.setProperty('--cw', cardWidth() + 'px');
 });
 
+const imgOk = {};   /* champion name -> first URL that loaded */
 function champImg(ch, cls){
   const img = document.createElement('img');
-  img.src = ch.img; img.alt = ch.name; img.draggable = false;
+  let i = 0;
+  const list = imgOk[ch.name] ? [imgOk[ch.name], ...ch.imgs] : ch.imgs;
+  img.src = list[0]; img.alt = ch.name; img.draggable = false;
+  img.onload = () => { imgOk[ch.name] = img.src; };
   img.onerror = () => {
+    i++;
+    if (i < list.length) { img.src = list[i]; return; }
     const f = document.createElement('div');
     f.className = cls;
     f.textContent = ch.name[0];
@@ -691,13 +714,15 @@ function cardEl(ch){
 }
 
 function renderCurrentDeck(){
-  $('currentDeckTitle').textContent = 'Deck ' + (state.decks.length + 1);
+  const shown = pendingDeck || state.current;
+  const deckNo = pendingDeck ? state.decks.length : state.decks.length + 1;
+  $('currentDeckTitle').textContent = 'Deck ' + deckNo;
   const slots = document.querySelectorAll('#currentDeck .slot');
   slots.forEach((s, si) => {
     s.className = 'slot';
     s.style.removeProperty('--rc');
     s.innerHTML = '';
-    const name = state.current[si];
+    const name = shown[si];
     if (name) {
       const ch = byName[name];
       s.classList.add('filled');
@@ -709,7 +734,7 @@ function renderCurrentDeck(){
       const q = document.createElement('div');
       q.className = 'qm'; q.textContent = '?';
       s.appendChild(q);
-      if (si === state.current.length) s.classList.add('target');
+      if (!pendingDeck && si === state.current.length) s.classList.add('target');
     }
   });
 }
@@ -747,6 +772,13 @@ function renderStats(){
 }
 
 function renderStage(){
+  if (pendingDeck) {
+    $('stageCount').textContent = 'Deck ' + state.decks.length + ' complete';
+    $('stageTarget').textContent = pendingDeck.map(n => n).join(' + ');
+    $('spinBtn').textContent = 'Draft next deck';
+    $('spinBtn').disabled = false;
+    return;
+  }
   const remaining = poolNow().length;
   if (remaining === 0) {
     $('stageCount').textContent = 'Pool is empty';
@@ -790,6 +822,7 @@ function buildReel(winner, wrapWidth, step){
 }
 
 function startSpin(){
+  if (pendingDeck) { nextDeck(); return; }
   if (spinning || poolNow().length === 0) return;
   spinning = true;
   renderStage();
@@ -861,6 +894,7 @@ function land(winner, winEl){
     state.current.push(winner.name);
     const deckDone = state.current.length === 2 || poolNow().length === 0;
     if (deckDone) {
+      pendingDeck = [...state.current];
       state.decks.push([...state.current]);
       state.used.push(...state.current);
       state.current = [];
@@ -917,10 +951,7 @@ function flyToSlot(winEl, ch, slotIdx, done){
   fly.style.setProperty('--rc', ch.color);
   fly.style.left = from.left + 'px'; fly.style.top = from.top + 'px';
   fly.style.width = from.width + 'px'; fly.style.height = from.height + 'px';
-  const img = document.createElement('img');
-  img.src = ch.img;
-  img.onerror = () => { fly.style.background = ch.color; img.remove(); };
-  fly.appendChild(img);
+  fly.appendChild(champImg(ch, 'hFallback'));
   document.body.appendChild(fly);
   fly.animate([
     {left: from.left+'px', top: from.top+'px', width: from.width+'px', height: from.height+'px', offset: 0},
@@ -957,16 +988,19 @@ function showDeckDone(pair){
   $('finale').style.display = 'flex';
 }
 
-$('againBtn').addEventListener('click', () => {
+function nextDeck(){
+  pendingDeck = null;
   $('finale').style.display = 'none';
   fillReelIdle();
   renderAll();
-});
+}
+$('againBtn').addEventListener('click', nextDeck);
 
 $('resetBtn').addEventListener('click', () => {
   if (spinning) return;
   if (!confirm('Reset this account? All drafted decks are deleted and every champion returns to the pool.')) return;
   state = { used: [], decks: [], current: [] };
+  pendingDeck = null;
   saveState();
   $('finale').style.display = 'none';
   fillReelIdle();
