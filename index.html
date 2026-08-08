@@ -775,7 +775,7 @@ function renderCurrentDeck(){
 
 const TIERS = [
   ["S", "#e0393f"], ["A", "#ff8a3c"], ["B", "#e9c83b"],
-  ["C", "#46e0a0"], ["D", "#5bb8ff"], ["F", "#8b96ab"]
+  ["C", "#46e0a0"], ["D", "#5bb8ff"]
 ];
 let selectedDeck = null;
 
@@ -856,7 +856,7 @@ function renderHistory(){
     if (t && byTier[t]) byTier[t].push([pair, idx]);
     else unranked.push([pair, idx]);
   });
-  board.appendChild(tierRow('New decks', '#2a3244', null, unranked));
+  board.appendChild(tierRow('', '#2a3244', null, unranked));
   TIERS.forEach(([t, color]) => board.appendChild(tierRow(t, color, t, byTier[t])));
 }
 
