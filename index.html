@@ -348,6 +348,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
   font-family:'Cinzel',serif;font-weight:900;font-size:18px;color:var(--rc);
 }
 .cChip:hover{border-color:var(--gold)}
+.cChip.insertBefore{box-shadow:-4px 0 0 var(--gold)}
 .cChip.selected{
   border-color:var(--gold);box-shadow:0 0 12px rgba(200,170,110,.5);transform:scale(1.1);z-index:2;
 }
@@ -493,7 +494,7 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
     <div class="tabPage" id="tabChamps" style="display:none">
       <div class="historyWrap">
         <div class="tierBoard" id="champBoard"></div>
-        <div class="tierHint">Tap a champion, then tap a tier. Drag works too.</div>
+        <div class="tierHint">Tap a champion, then tap a tier. Tap another champion in a tier to slot in front of it. Drag works too.</div>
       </div>
     </div>
   </main>
@@ -610,7 +611,7 @@ function loadState(user){
     const raw = localStorage.getItem('rr_' + user);
     if (raw) return JSON.parse(raw);
   } catch(e){}
-  return memStore['rr_' + user] || { used: [], decks: [], current: [], tiers: {}, champTiers: {} };
+  return memStore['rr_' + user] || { used: [], decks: [], current: [], tiers: {}, champTiers: { S:[], A:[], B:[], C:[], D:[] } };
 }
 function saveState(){
   const data = JSON.stringify(state);
@@ -647,7 +648,7 @@ $('loginForm').addEventListener('submit', e => {
     $('userLabel').textContent = u;
     state = loadState(u);
     if (!state.tiers) state.tiers = {};
-    if (!state.champTiers) state.champTiers = {};
+    migrateChampTiers();
     pendingDeck = null;
     spinning = false;
     $('finale').style.display = 'none';
@@ -1137,7 +1138,7 @@ $('againBtn').addEventListener('click', nextDeck);
 $('resetBtn').addEventListener('click', () => {
   if (spinning) return;
   if (!confirm('Reset this account? All drafted decks are deleted and every champion returns to the pool.')) return;
-  state = { used: [], decks: [], current: [], tiers: {}, champTiers: {} };
+  state = { used: [], decks: [], current: [], tiers: {}, champTiers: { S:[], A:[], B:[], C:[], D:[] } };
   pendingDeck = null;
   saveState();
   $('finale').style.display = 'none';
@@ -1149,7 +1150,44 @@ $('resetBtn').addEventListener('click', () => {
 /* ================= CHAMPION TIER LIST ================= */
 let selectedChamp = null;
 
-function champChipEl(ch){
+/* older saves stored { name: tier }; convert to ordered lists per tier */
+function migrateChampTiers(){
+  const ct = state.champTiers;
+  const fresh = { S:[], A:[], B:[], C:[], D:[] };
+  if (!ct) { state.champTiers = fresh; return; }
+  if (Array.isArray(ct.S)) {
+    Object.keys(fresh).forEach(t => { if (!Array.isArray(ct[t])) ct[t] = []; });
+    return;
+  }
+  Object.entries(ct).forEach(([name, t]) => { if (fresh[t]) fresh[t].push(name); });
+  Object.keys(fresh).forEach(t => fresh[t].sort((x, y) => x.localeCompare(y, 'en')));
+  state.champTiers = fresh;
+}
+
+function removeChampEverywhere(name){
+  TIERS.forEach(([t]) => {
+    const arr = state.champTiers[t];
+    const i = arr.indexOf(name);
+    if (i > -1) arr.splice(i, 1);
+  });
+}
+
+/* place a champion into a tier, optionally right before another champion */
+function placeChamp(name, tier, beforeName){
+  if (!name) return;
+  removeChampEverywhere(name);
+  if (tier) {
+    const arr = state.champTiers[tier];
+    const i = beforeName ? arr.indexOf(beforeName) : -1;
+    if (i > -1) arr.splice(i, 0, name);
+    else arr.push(name);
+  }
+  selectedChamp = null;
+  saveState();
+  renderChampBoard();
+}
+
+function champChipEl(ch, tierKey){
   const d = document.createElement('div');
   d.className = 'cChip' + (selectedChamp === ch.name ? ' selected' : '');
   d.style.setProperty('--rc', ch.color);
@@ -1161,6 +1199,10 @@ function champChipEl(ch){
   d.appendChild(img);
   d.addEventListener('click', e => {
     e.stopPropagation();
+    if (selectedChamp && selectedChamp !== ch.name && tierKey) {
+      placeChamp(selectedChamp, tierKey, ch.name);
+      return;
+    }
     selectedChamp = selectedChamp === ch.name ? null : ch.name;
     renderChampBoard();
   });
@@ -1168,16 +1210,17 @@ function champChipEl(ch){
     e.dataTransfer.setData('text/plain', 'c:' + ch.name);
     e.dataTransfer.effectAllowed = 'move';
   });
+  if (tierKey) {
+    d.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); d.classList.add('insertBefore'); });
+    d.addEventListener('dragleave', () => d.classList.remove('insertBefore'));
+    d.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      d.classList.remove('insertBefore');
+      const data = e.dataTransfer.getData('text/plain');
+      if (data && data.startsWith('c:') && data.slice(2) !== ch.name) placeChamp(data.slice(2), tierKey, ch.name);
+    });
+  }
   return d;
-}
-
-function assignChamp(name, tier){
-  if (!name) return;
-  if (tier) state.champTiers[name] = tier;
-  else delete state.champTiers[name];
-  selectedChamp = null;
-  saveState();
-  renderChampBoard();
 }
 
 function champTierRow(label, color, tierKey, champsHere){
@@ -1189,16 +1232,16 @@ function champTierRow(label, color, tierKey, champsHere){
   lab.textContent = label;
   const cells = document.createElement('div');
   cells.className = 'tierCells';
-  champsHere.forEach(ch => cells.appendChild(champChipEl(ch)));
+  champsHere.forEach(ch => cells.appendChild(champChipEl(ch, tierKey)));
   row.append(lab, cells);
-  row.addEventListener('click', () => { if (selectedChamp !== null) assignChamp(selectedChamp, tierKey); });
+  row.addEventListener('click', () => { if (selectedChamp !== null) placeChamp(selectedChamp, tierKey, null); });
   row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('dropReady'); });
   row.addEventListener('dragleave', () => row.classList.remove('dropReady'));
   row.addEventListener('drop', e => {
     e.preventDefault();
     row.classList.remove('dropReady');
     const data = e.dataTransfer.getData('text/plain');
-    if (data && data.startsWith('c:')) assignChamp(data.slice(2), tierKey);
+    if (data && data.startsWith('c:')) placeChamp(data.slice(2), tierKey, null);
   });
   return row;
 }
@@ -1206,16 +1249,16 @@ function champTierRow(label, color, tierKey, champsHere){
 function renderChampBoard(){
   const board = $('champBoard');
   board.innerHTML = '';
-  const unranked = [];
-  const byTier = {};
-  TIERS.forEach(([t]) => byTier[t] = []);
-  [...CHAMPIONS].sort((a, b) => a.name.localeCompare(b.name, 'en')).forEach(ch => {
-    const t = state.champTiers[ch.name];
-    if (t && byTier[t]) byTier[t].push(ch);
-    else unranked.push(ch);
-  });
+  const ranked = new Set();
+  TIERS.forEach(([t]) => state.champTiers[t].forEach(n => ranked.add(n)));
+  const unranked = [...CHAMPIONS]
+    .filter(ch => !ranked.has(ch.name))
+    .sort((x, y) => x.name.localeCompare(y.name, 'en'));
   board.appendChild(champTierRow('', '#2a3244', null, unranked));
-  TIERS.forEach(([t, color]) => board.appendChild(champTierRow(t, color, t, byTier[t])));
+  TIERS.forEach(([t, color]) => {
+    const champs = state.champTiers[t].map(n => byName[n]).filter(Boolean);
+    board.appendChild(champTierRow(t, color, t, champs));
+  });
 }
 
 /* ================= TABS ================= */
