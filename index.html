@@ -323,6 +323,34 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
 .tierCells:empty::after{
   content:"";flex:1;
 }
+.tabs{display:flex;gap:10px;justify-content:center;width:min(1100px,100%)}
+.tabBtn{
+  background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  padding:9px 22px;border-radius:7px;cursor:pointer;
+  font-family:'Cinzel',serif;font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;
+  transition:border-color .2s,color .2s,box-shadow .2s;
+}
+.tabBtn:hover{border-color:var(--gold)}
+.tabBtn.active{
+  color:var(--gold-bright);border-color:var(--gold);
+  box-shadow:0 0 14px rgba(200,170,110,.25);
+}
+.tabPage{display:flex;flex-direction:column;align-items:center;gap:26px;width:100%}
+.cChip{
+  width:46px;height:46px;border-radius:7px;overflow:hidden;cursor:grab;position:relative;
+  border:1px solid color-mix(in srgb, var(--rc) 55%, #222a3a);
+  background:#0c1220;user-select:none;
+  transition:border-color .15s, box-shadow .15s, transform .15s;
+}
+.cChip img{width:100%;height:100%;object-fit:cover;display:block}
+.cChip .hFallback{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-weight:900;font-size:18px;color:var(--rc);
+}
+.cChip:hover{border-color:var(--gold)}
+.cChip.selected{
+  border-color:var(--gold);box-shadow:0 0 12px rgba(200,170,110,.5);transform:scale(1.1);z-index:2;
+}
 .tierBoard{display:flex;flex-direction:column;gap:8px}
 .tierRow{
   display:flex;align-items:stretch;border:1px solid var(--line);border-radius:9px;
@@ -421,6 +449,11 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
     </div>
   </header>
   <main>
+    <div class="tabs">
+      <button class="tabBtn active" id="tabBtnDraft">Draft</button>
+      <button class="tabBtn" id="tabBtnChamps">A-Z tier list</button>
+    </div>
+    <div class="tabPage" id="tabDraft">
     <div class="stage">
       <div class="stageCount" id="stageCount"></div>
       <div class="stageTarget" id="stageTarget"></div>
@@ -454,6 +487,14 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 1
       <h3>Tier list</h3>
       <div class="tierBoard" id="tierBoard"></div>
       <div class="tierHint">Tap a deck, then tap a tier. Drag works too.</div>
+    </div>
+    </div>
+
+    <div class="tabPage" id="tabChamps" style="display:none">
+      <div class="historyWrap">
+        <div class="tierBoard" id="champBoard"></div>
+        <div class="tierHint">Tap a champion, then tap a tier. Drag works too.</div>
+      </div>
     </div>
   </main>
 </div>
@@ -569,7 +610,7 @@ function loadState(user){
     const raw = localStorage.getItem('rr_' + user);
     if (raw) return JSON.parse(raw);
   } catch(e){}
-  return memStore['rr_' + user] || { used: [], decks: [], current: [], tiers: {} };
+  return memStore['rr_' + user] || { used: [], decks: [], current: [], tiers: {}, champTiers: {} };
 }
 function saveState(){
   const data = JSON.stringify(state);
@@ -606,11 +647,13 @@ $('loginForm').addEventListener('submit', e => {
     $('userLabel').textContent = u;
     state = loadState(u);
     if (!state.tiers) state.tiers = {};
+    if (!state.champTiers) state.champTiers = {};
     pendingDeck = null;
     spinning = false;
     $('finale').style.display = 'none';
     fillReelIdle();
     renderAll();
+    renderChampBoard();
   } else {
     $('loginErr').textContent = 'Wrong username or password.';
   }
@@ -1094,13 +1137,98 @@ $('againBtn').addEventListener('click', nextDeck);
 $('resetBtn').addEventListener('click', () => {
   if (spinning) return;
   if (!confirm('Reset this account? All drafted decks are deleted and every champion returns to the pool.')) return;
-  state = { used: [], decks: [], current: [], tiers: {} };
+  state = { used: [], decks: [], current: [], tiers: {}, champTiers: {} };
   pendingDeck = null;
   saveState();
   $('finale').style.display = 'none';
   fillReelIdle();
   renderAll();
+  renderChampBoard();
 });
+
+/* ================= CHAMPION TIER LIST ================= */
+let selectedChamp = null;
+
+function champChipEl(ch){
+  const d = document.createElement('div');
+  d.className = 'cChip' + (selectedChamp === ch.name ? ' selected' : '');
+  d.style.setProperty('--rc', ch.color);
+  d.title = ch.name;
+  d.draggable = true;
+  d.dataset.name = ch.name;
+  const img = champImg(ch, 'hFallback');
+  img.loading = 'lazy';
+  d.appendChild(img);
+  d.addEventListener('click', e => {
+    e.stopPropagation();
+    selectedChamp = selectedChamp === ch.name ? null : ch.name;
+    renderChampBoard();
+  });
+  d.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', 'c:' + ch.name);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  return d;
+}
+
+function assignChamp(name, tier){
+  if (!name) return;
+  if (tier) state.champTiers[name] = tier;
+  else delete state.champTiers[name];
+  selectedChamp = null;
+  saveState();
+  renderChampBoard();
+}
+
+function champTierRow(label, color, tierKey, champsHere){
+  const row = document.createElement('div');
+  row.className = 'tierRow' + (tierKey ? '' : ' unranked');
+  const lab = document.createElement('div');
+  lab.className = 'tierLabel';
+  lab.style.background = color;
+  lab.textContent = label;
+  const cells = document.createElement('div');
+  cells.className = 'tierCells';
+  champsHere.forEach(ch => cells.appendChild(champChipEl(ch)));
+  row.append(lab, cells);
+  row.addEventListener('click', () => { if (selectedChamp !== null) assignChamp(selectedChamp, tierKey); });
+  row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('dropReady'); });
+  row.addEventListener('dragleave', () => row.classList.remove('dropReady'));
+  row.addEventListener('drop', e => {
+    e.preventDefault();
+    row.classList.remove('dropReady');
+    const data = e.dataTransfer.getData('text/plain');
+    if (data && data.startsWith('c:')) assignChamp(data.slice(2), tierKey);
+  });
+  return row;
+}
+
+function renderChampBoard(){
+  const board = $('champBoard');
+  board.innerHTML = '';
+  const unranked = [];
+  const byTier = {};
+  TIERS.forEach(([t]) => byTier[t] = []);
+  CHAMPIONS.forEach(ch => {
+    const t = state.champTiers[ch.name];
+    if (t && byTier[t]) byTier[t].push(ch);
+    else unranked.push(ch);
+  });
+  board.appendChild(champTierRow('', '#2a3244', null, unranked));
+  TIERS.forEach(([t, color]) => board.appendChild(champTierRow(t, color, t, byTier[t])));
+}
+
+/* ================= TABS ================= */
+function showTab(which){
+  const draft = which === 'draft';
+  $('tabDraft').style.display = draft ? 'flex' : 'none';
+  $('tabChamps').style.display = draft ? 'none' : 'flex';
+  $('tabBtnDraft').classList.toggle('active', draft);
+  $('tabBtnChamps').classList.toggle('active', !draft);
+  if (!draft) renderChampBoard();
+}
+$('tabBtnDraft').addEventListener('click', () => showTab('draft'));
+$('tabBtnChamps').addEventListener('click', () => showTab('champs'));
 
 /* Dev check: compares the pool against Data Dragon (all collectible Champion cards).
    Open the browser console on the deployed site and run: verifyPool() */
