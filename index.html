@@ -1209,7 +1209,7 @@ function renderChampBoard(){
   const unranked = [];
   const byTier = {};
   TIERS.forEach(([t]) => byTier[t] = []);
-  CHAMPIONS.forEach(ch => {
+  [...CHAMPIONS].sort((a, b) => a.name.localeCompare(b.name, 'en')).forEach(ch => {
     const t = state.champTiers[ch.name];
     if (t && byTier[t]) byTier[t].push(ch);
     else unranked.push(ch);
